@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#0f0f0f"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Cronómetro"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icons/icon-192.png"/>
+<link rel="icon" type="image/x-icon" href="favicon.ico"/>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"/>
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png"/>
+<title>Cronómetro de Tareas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap"/>
+<style>
+:root {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface2: #242424;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f0f0f0;
+  --muted: #888;
+  --hint: #555;
+  --danger: #c0392b;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); }
+body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; min-height: 100dvh; }
+
+.header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px 0; }
+.header-title { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+
+.fields { padding: 20px 24px 0; display: flex; flex-direction: column; gap: 10px; }
+.field-wrap input {
+  width: 100%; padding: 14px 16px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: 12px; color: var(--text); font-family: var(--sans); font-size: 15px;
+  outline: none; transition: border-color 0.15s;
+}
+.field-wrap input:focus { border-color: var(--border2); }
+.field-wrap input::placeholder { color: var(--hint); }
+
+.timer-section {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 0 24px; gap: 0;
+}
+.time-display {
+  font-family: var(--mono); font-size: 58px; font-weight: 400;
+  color: var(--text); letter-spacing: 0.02em; margin-bottom: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.status-label {
+  font-size: 12px; color: var(--hint); letter-spacing: 0.06em;
+  text-transform: uppercase; margin-bottom: 40px; height: 16px; transition: color 0.3s;
+}
+.status-label.running { color: var(--muted); }
+
+.play-btn {
+  width: 96px; height: 96px; border-radius: 50%;
+  background: var(--surface); border: 0.5px solid var(--border2);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, transform 0.1s; margin-bottom: 36px; position: relative;
+}
+.play-btn::after {
+  content: ''; position: absolute; inset: -6px;
+  border-radius: 50%; border: 1px solid transparent; transition: border-color 0.3s;
+}
+.play-btn.running::after { border-color: rgba(255,255,255,0.08); }
+.play-btn:active { transform: scale(0.94); }
+.play-btn svg { width: 36px; height: 36px; fill: var(--text); }
+
+.save-btn {
+  padding: 12px 32px; font-size: 13px; font-family: var(--sans); font-weight: 500;
+  border: 0.5px solid var(--border2); border-radius: 24px;
+  background: transparent; color: var(--muted); cursor: pointer;
+  transition: background 0.15s, color 0.15s, opacity 0.15s; letter-spacing: 0.03em;
+}
+.save-btn:not(:disabled):hover { background: var(--surface2); color: var(--text); }
+.save-btn:disabled { opacity: 0.25; cursor: default; }
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.12); }
+  70%  { box-shadow: 0 0 0 16px rgba(255,255,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+}
+.play-btn.running { animation: pulse-ring 2s ease-out infinite; }
+
+/* log */
+.log-section { border-top: 0.5px solid var(--border); padding-bottom: calc(24px + var(--safe-bottom)); }
+.log-toggle { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; cursor: pointer; user-select: none; }
+.log-toggle-left { display: flex; align-items: center; gap: 8px; }
+.log-toggle-label { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; }
+.log-count { font-size: 11px; font-weight: 500; padding: 2px 8px; background: var(--surface); border-radius: 10px; color: var(--hint); font-family: var(--mono); }
+.chevron { width: 16px; height: 16px; color: var(--hint); transition: transform 0.2s; }
+.log-toggle.open .chevron { transform: rotate(180deg); }
+.log-body { display: none; padding: 0 24px; }
+.log-body.open { display: block; }
+.month-block { margin-bottom: 20px; }
+.month-heading { font-size: 11px; font-weight: 500; color: var(--hint); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
+.day-block { margin-bottom: 8px; }
+.day-heading { font-size: 11px; color: var(--hint); margin-bottom: 6px; padding-left: 2px; text-transform: capitalize; }
+
+.entry {
+  display: flex; align-items: center;
+  padding: 10px 14px; background: var(--surface);
+  border: 0.5px solid var(--border); border-radius: 10px;
+  margin-bottom: 4px; gap: 10px;
+}
+.entry-info { min-width: 0; flex: 1; }
+.entry-task { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entry-client { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entry-duration { font-family: var(--mono); font-size: 13px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+.entry-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.icon-btn {
+  width: 30px; height: 30px; border-radius: 8px; border: none;
+  background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--hint); transition: background 0.15s, color 0.15s;
+}
+.icon-btn:hover { background: var(--surface2); color: var(--text); }
+.icon-btn.danger:hover { color: var(--danger); }
+.icon-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.empty-state { text-align: center; padding: 24px 0; color: var(--hint); font-size: 13px; }
+
+/* modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface); border: 0.5px solid var(--border2);
+  border-radius: 20px 20px 0 0; padding: 24px 24px calc(24px + var(--safe-bottom));
+  width: 100%; max-width: 480px;
+  transform: translateY(20px); transition: transform 0.2s;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-title { font-size: 14px; font-weight: 500; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 16px; }
+.modal input {
+  width: 100%; padding: 12px 14px; background: var(--bg); border: 0.5px solid var(--border2);
+  border-radius: 10px; color: var(--text); font-family: var(--sans); font-size: 15px;
+  outline: none; margin-bottom: 10px;
+}
+.modal-note { font-size: 12px; color: var(--hint); margin-bottom: 16px; }
+.modal-actions { display: flex; gap: 8px; }
+.modal-btn {
+  flex: 1; padding: 12px; font-size: 14px; font-family: var(--sans); font-weight: 500;
+  border-radius: 12px; border: 0.5px solid var(--border2); cursor: pointer;
+  background: transparent; color: var(--muted); transition: background 0.15s, color 0.15s;
+}
+.modal-btn.primary { background: var(--surface2); color: var(--text); }
+.modal-btn:hover { background: var(--surface2); color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-title">Cronómetro</span>
+</div>
+
+<div class="fields">
+  <div class="field-wrap">
+    <input type="text" id="task-input" placeholder="Descripción de la tarea" autocomplete="off"/>
+  </div>
+  <div class="field-wrap">
+    <input type="text" id="client-input" placeholder="Cliente" autocomplete="off"/>
+  </div>
+</div>
+
+<div class="timer-section">
+  <div class="time-display" id="display">00:00:00</div>
+  <div class="status-label" id="status">en espera</div>
+
+  <button class="play-btn" id="play-btn" aria-label="Iniciar cronómetro">
+    <svg id="play-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path id="play-icon" d="M8 5v14l11-7z"/>
+    </svg>
+  </button>
+
+  <button class="save-btn" id="save-btn" disabled>Guardar registro</button>
+</div>
+
+<div class="log-section">
+  <div class="log-toggle" id="log-toggle" role="button" tabindex="0" aria-expanded="false">
+    <div class="log-toggle-left">
+      <span class="log-toggle-label">Tiempos registrados</span>
+      <span class="log-count" id="log-count">0</span>
+    </div>
+    <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </div>
+  <div class="log-body" id="log-body">
+    <div id="log-list"><p class="empty-state">Aún no hay registros</p></div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Editar registro</div>
+    <input type="text" id="edit-task" placeholder="Descripción"/>
+    <input type="text" id="edit-client" placeholder="Cliente"/>
+    <input type="text" id="edit-duration" placeholder="Duración hh:mm:ss"/>
+    <p class="modal-note">Formato de duración: hh:mm:ss (ej. 01:30:00)</p>
+    <div class="modal-actions">
+      <button class="modal-btn" id="modal-cancel">Cancelar</button>
+      <button class="modal-btn primary" id="modal-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+const PLAY_PATH  = 'M8 5v14l11-7z';
+const PAUSE_PATH = 'M6 19h4V5H6v14zm8-14v14h4V5h-4z';
+
+let running = false, elapsed = 0, startTime = null, rafId = null;
+let editIndex = null;
+
+const display    = document.getElementById('display');
+const statusEl   = document.getElementById('status');
+const playBtn    = document.getElementById('play-btn');
+const playIcon   = document.getElementById('play-icon');
+const saveBtn    = document.getElementById('save-btn');
+const logToggle  = document.getElementById('log-toggle');
+const logBody    = document.getElementById('log-body');
+const logList    = document.getElementById('log-list');
+const logCount   = document.getElementById('log-count');
+const modalOv    = document.getElementById('modal-overlay');
+const editTask   = document.getElementById('edit-task');
+const editClient = document.getElementById('edit-client');
+const editDur    = document.getElementById('edit-duration');
+
+// ── helpers ──────────────────────────────────────
+function fmt(ms) {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sc = s % 60;
+  return [h, m, sc].map(n => String(n).padStart(2, '0')).join(':');
+}
+function parseDuration(str) {
+  const parts = str.trim().split(':').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  return (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000;
+}
+function getRecords() { return JSON.parse(localStorage.getItem('timer_records') || '[]'); }
+function setRecords(r) { localStorage.setItem('timer_records', JSON.stringify(r)); }
+
+// ── session persistence ───────────────────────────
+function saveSession() {
+  if (running) {
+    localStorage.setItem('timer_session', JSON.stringify({ startTime, elapsed: Date.now() - startTime }));
+  } else {
+    localStorage.setItem('timer_session', JSON.stringify({ startTime: null, elapsed }));
+  }
+  localStorage.setItem('timer_inputs', JSON.stringify({
+    task: document.getElementById('task-input').value,
+    client: document.getElementById('client-input').value
+  }));
+}
+function restoreSession() {
+  try {
+    const sess = JSON.parse(localStorage.getItem('timer_session') || 'null');
+    const inputs = JSON.parse(localStorage.getItem('timer_inputs') || 'null');
+    if (inputs) {
+      document.getElementById('task-input').value = inputs.task || '';
+      document.getElementById('client-input').value = inputs.client || '';
+    }
+    if (sess && sess.elapsed > 0) {
+      elapsed = sess.elapsed;
+      display.textContent = fmt(elapsed);
+      // Was it running when app closed?
+      if (sess.startTime) {
+        // Reconstruct: add time passed since it was saved
+        elapsed = Date.now() - sess.startTime;
+        startSession();
+      } else {
+        saveBtn.disabled = false;
+        statusEl.textContent = 'pausado';
+      }
+    }
+  } catch(e) {}
+}
+
+// ── timer controls ────────────────────────────────
+function tick() {
+  elapsed = Date.now() - startTime;
+  display.textContent = fmt(elapsed);
+  rafId = requestAnimationFrame(tick);
+}
+function startSession() {
+  startTime = Date.now() - elapsed;
+  running = true;
+  playIcon.setAttribute('d', PAUSE_PATH);
+  playBtn.setAttribute('aria-label', 'Pausar');
+  playBtn.classList.add('running');
+  statusEl.textContent = 'en curso';
+  statusEl.classList.add('running');
+  saveBtn.disabled = true;
+  rafId = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener('click', () => {
+  if (!running) {
+    startSession();
+  } else {
+    cancelAnimationFrame(rafId);
+    running = false;
+    playIcon.setAttribute('d', PLAY_PATH);
+    playBtn.setAttribute('aria-label', 'Reanudar');
+    playBtn.classList.remove('running');
+    statusEl.textContent = 'pausado';
+    statusEl.classList.remove('running');
+    saveBtn.disabled = elapsed < 1000;
+  }
+  saveSession();
+});
+
+saveBtn.addEventListener('click', () => {
+  if (elapsed < 1000) return;
+  const task = document.getElementById('task-input').value.trim() || 'Sin descripción';
+  const client = document.getElementById('client-input').value.trim() || 'Sin cliente';
+  const records = getRecords();
+  records.push({ task, client, duration: elapsed, ts: new Date().toISOString() });
+  setRecords(records);
+  elapsed = 0;
+  display.textContent = '00:00:00';
+  statusEl.textContent = 'guardado ✓';
+  saveBtn.disabled = true;
+  document.getElementById('task-input').value = '';
+  document.getElementById('client-input').value = '';
+  localStorage.removeItem('timer_session');
+  localStorage.removeItem('timer_inputs');
+  setTimeout(() => { statusEl.textContent = 'en espera'; }, 1800);
+  renderLog();
+  if (!logBody.classList.contains('open')) {
+    logBody.classList.add('open');
+    logToggle.classList.add('open');
+    logToggle.setAttribute('aria-expanded', 'true');
+  }
+});
+
+// Save session on visibility change (app goes background)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) saveSession();
+});
+window.addEventListener('pagehide', saveSession);
+
+// ── log toggle ────────────────────────────────────
+logToggle.addEventListener('click', () => {
+  const open = logBody.classList.toggle('open');
+  logToggle.classList.toggle('open', open);
+  logToggle.setAttribute('aria-expanded', open);
+});
+logToggle.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') logToggle.click(); });
+
+// ── edit modal ────────────────────────────────────
+function openEdit(idx) {
+  const records = getRecords();
+  const r = records[idx];
+  editIndex = idx;
+  editTask.value = r.task;
+  editClient.value = r.client;
+  editDur.value = fmt(r.duration);
+  modalOv.classList.add('open');
+}
+function closeModal() { modalOv.classList.remove('open'); editIndex = null; }
+
+document.getElementById('modal-cancel').addEventListener('click', closeModal);
+modalOv.addEventListener('click', e => { if (e.target === modalOv) closeModal(); });
+
+document.getElementById('modal-save').addEventListener('click', () => {
+  if (editIndex === null) return;
+  const dur = parseDuration(editDur.value);
+  if (dur === null || dur <= 0) { editDur.style.borderColor = 'var(--danger)'; return; }
+  editDur.style.borderColor = '';
+  const records = getRecords();
+  records[editIndex] = {
+    ...records[editIndex],
+    task: editTask.value.trim() || 'Sin descripción',
+    client: editClient.value.trim() || 'Sin cliente',
+    duration: dur
+  };
+  setRecords(records);
+  closeModal();
+  renderLog();
+});
+
+// ── delete ────────────────────────────────────────
+function deleteRecord(idx) {
+  const records = getRecords();
+  records.splice(idx, 1);
+  setRecords(records);
+  renderLog();
+}
+
+// ── render log ────────────────────────────────────
+function renderLog() {
+  const records = getRecords();
+  logCount.textContent = records.length;
+  if (!records.length) { logList.innerHTML = '<p class="empty-state">Aún no hay registros</p>'; return; }
+
+  // Build index map so we keep original indices for edit/delete
+  const indexed = records.map((r, i) => ({ ...r, _i: i }));
+  const grouped = {};
+  indexed.slice().reverse().forEach(r => {
+    const d = new Date(r.ts);
+    const mk = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    const dk = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    if (!grouped[mk]) grouped[mk] = {};
+    if (!grouped[mk][dk]) grouped[mk][dk] = [];
+    grouped[mk][dk].push(r);
+  });
+
+  let html = '';
+  for (const month in grouped) {
+    html += `<div class="month-block"><div class="month-heading">${month}</div>`;
+    for (const day in grouped[month]) {
+      html += `<div class="day-block"><div class="day-heading">${day}</div>`;
+      grouped[month][day].forEach(r => {
+        html += `<div class="entry">
+          <div class="entry-info">
+            <div class="entry-task">${r.task}</div>
+            <div class="entry-client">${r.client}</div>
+          </div>
+          <div class="entry-duration">${fmt(r.duration)}</div>
+          <div class="entry-actions">
+            <button class="icon-btn" onclick="openEdit(${r._i})" title="Editar">
+              <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="icon-btn danger" onclick="deleteRecord(${r._i})" title="Eliminar">
+              <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </button>
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  logList.innerHTML = html;
+}
+
+// ── init ──────────────────────────────────────────
+restoreSession();
+renderLog();
+</script>
+</body>
+</html>

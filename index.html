@@ -47,52 +47,182 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 .field-wrap input:focus { border-color: var(--border2); }
 .field-wrap input::placeholder { color: var(--hint); }
 
-.timer-section {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; padding: 0 24px; gap: 0;
+.add-timer-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--surface);
+  border: 0.5px solid var(--border2);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s, border-color 0.15s;
+  margin-top: 4px;
+  outline: none;
 }
-.time-display {
-  font-family: var(--mono); font-size: 58px; font-weight: 400;
-  color: var(--text); letter-spacing: 0.02em; margin-bottom: 10px;
+.add-timer-btn:hover {
+  background: var(--surface2);
+  border-color: rgba(255,255,255,0.2);
+}
+.add-timer-btn:active {
+  transform: scale(0.98);
+}
+
+/* active timers container */
+.active-timers-container {
+  flex: 1;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  min-height: 200px;
+}
+
+.empty-timers {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--hint);
+  font-size: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+  margin: 10px 0;
+}
+.empty-timers small {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* timer card design */
+.timer-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.timer-card:hover {
+  border-color: var(--border2);
+}
+.timer-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.timer-card-info {
+  min-width: 0;
+  flex: 1;
+  padding-right: 8px;
+}
+.timer-card-task {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timer-card-client {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timer-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.timer-card-time {
+  font-family: var(--mono);
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
-.status-label {
-  font-size: 12px; color: var(--hint); letter-spacing: 0.06em;
-  text-transform: uppercase; margin-bottom: 40px; height: 16px; transition: color 0.3s;
+.timer-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.status-label.running { color: var(--muted); }
+.card-play-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 0.5px solid var(--border2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  transition: background 0.15s, transform 0.1s;
+}
+.card-play-btn:active {
+  transform: scale(0.92);
+}
+.card-play-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+.card-save-btn {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-family: var(--sans);
+  font-weight: 500;
+  border-radius: 16px;
+  border: 0.5px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.card-save-btn:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+.card-save-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.card-delete-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hint);
+  transition: background 0.15s, color 0.15s;
+}
+.card-delete-btn:hover {
+  background: var(--surface2);
+  color: var(--danger);
+}
+.card-delete-btn svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
-.play-btn {
-  width: 96px; height: 96px; border-radius: 50%;
-  background: var(--surface); border: 0.5px solid var(--border2);
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s, transform 0.1s; margin-bottom: 36px; position: relative;
-}
-.play-btn::after {
-  content: ''; position: absolute; inset: -6px;
-  border-radius: 50%; border: 1px solid transparent; transition: border-color 0.3s;
-}
-.play-btn.running::after { border-color: rgba(255,255,255,0.08); }
-.play-btn:active { transform: scale(0.94); }
-.play-btn svg { width: 36px; height: 36px; fill: var(--text); }
-
-.save-btn {
-  padding: 12px 32px; font-size: 13px; font-family: var(--sans); font-weight: 500;
-  border: 0.5px solid var(--border2); border-radius: 24px;
-  background: transparent; color: var(--muted); cursor: pointer;
-  transition: background 0.15s, color 0.15s, opacity 0.15s; letter-spacing: 0.03em;
-}
-.save-btn:not(:disabled):hover { background: var(--surface2); color: var(--text); }
-.save-btn:disabled { opacity: 0.25; cursor: default; }
-
-@keyframes pulse-ring {
-  0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.12); }
-  70%  { box-shadow: 0 0 0 16px rgba(255,255,255,0); }
-  100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
-}
-.play-btn.running { animation: pulse-ring 2s ease-out infinite; }
-
-/* log */
+/* log section styles */
 .log-section { border-top: 0.5px solid var(--border); padding-bottom: calc(24px + var(--safe-bottom)); }
 .log-toggle { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; cursor: pointer; user-select: none; }
 .log-toggle-left { display: flex; align-items: center; gap: 8px; }
@@ -129,7 +259,7 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 
 .empty-state { text-align: center; padding: 24px 0; color: var(--hint); font-size: 13px; }
 
-/* modal */
+/* modal styles */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.7);
   display: flex; align-items: flex-end; justify-content: center;
@@ -173,19 +303,11 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   <div class="field-wrap">
     <input type="text" id="client-input" placeholder="Cliente" autocomplete="off"/>
   </div>
+  <button class="add-timer-btn" id="add-timer-btn">Iniciar nuevo cronómetro</button>
 </div>
 
-<div class="timer-section">
-  <div class="time-display" id="display">00:00:00</div>
-  <div class="status-label" id="status">en espera</div>
-
-  <button class="play-btn" id="play-btn" aria-label="Iniciar cronómetro">
-    <svg id="play-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path id="play-icon" d="M8 5v14l11-7z"/>
-    </svg>
-  </button>
-
-  <button class="save-btn" id="save-btn" disabled>Guardar registro</button>
+<div class="active-timers-container" id="active-timers-container">
+  <!-- Las tarjetas de cronómetros activos se renderizan dinámicamente aquí -->
 </div>
 
 <div class="log-section">
@@ -226,14 +348,10 @@ if ('serviceWorker' in navigator) {
 const PLAY_PATH  = 'M8 5v14l11-7z';
 const PAUSE_PATH = 'M6 19h4V5H6v14zm8-14v14h4V5h-4z';
 
-let running = false, elapsed = 0, startTime = null, rafId = null;
+let activeTimers = [];
+let rafId = null;
 let editIndex = null;
 
-const display    = document.getElementById('display');
-const statusEl   = document.getElementById('status');
-const playBtn    = document.getElementById('play-btn');
-const playIcon   = document.getElementById('play-icon');
-const saveBtn    = document.getElementById('save-btn');
 const logToggle  = document.getElementById('log-toggle');
 const logBody    = document.getElementById('log-body');
 const logList    = document.getElementById('log-list');
@@ -259,13 +377,16 @@ function parseDuration(str) {
 function getRecords() { return JSON.parse(localStorage.getItem('timer_records') || '[]'); }
 function setRecords(r) { localStorage.setItem('timer_records', JSON.stringify(r)); }
 
+function getActiveTimers() { return JSON.parse(localStorage.getItem('active_timers') || '[]'); }
+function setActiveTimers(timers) { localStorage.setItem('active_timers', JSON.stringify(timers)); }
+function saveActiveTimers() { setActiveTimers(activeTimers); }
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
 // ── session persistence ───────────────────────────
-function saveSession() {
-  if (running) {
-    localStorage.setItem('timer_session', JSON.stringify({ startTime, elapsed: Date.now() - startTime }));
-  } else {
-    localStorage.setItem('timer_session', JSON.stringify({ startTime: null, elapsed }));
-  }
+function saveInputs() {
   localStorage.setItem('timer_inputs', JSON.stringify({
     task: document.getElementById('task-input').value,
     client: document.getElementById('client-input').value
@@ -273,91 +394,186 @@ function saveSession() {
 }
 function restoreSession() {
   try {
-    const sess = JSON.parse(localStorage.getItem('timer_session') || 'null');
+    activeTimers = getActiveTimers();
+    if (!Array.isArray(activeTimers)) activeTimers = [];
+    
     const inputs = JSON.parse(localStorage.getItem('timer_inputs') || 'null');
     if (inputs) {
       document.getElementById('task-input').value = inputs.task || '';
       document.getElementById('client-input').value = inputs.client || '';
     }
-    if (sess && sess.elapsed > 0) {
-      elapsed = sess.elapsed;
-      display.textContent = fmt(elapsed);
-      // Was it running when app closed?
-      if (sess.startTime) {
-        // Reconstruct: add time passed since it was saved
-        elapsed = Date.now() - sess.startTime;
-        startSession();
-      } else {
-        saveBtn.disabled = false;
-        statusEl.textContent = 'pausado';
-      }
-    }
-  } catch(e) {}
+    
+    renderActiveTimers();
+    startTickIfNeeded();
+  } catch(e) {
+    activeTimers = [];
+  }
 }
 
 // ── timer controls ────────────────────────────────
 function tick() {
-  elapsed = Date.now() - startTime;
-  display.textContent = fmt(elapsed);
-  rafId = requestAnimationFrame(tick);
-}
-function startSession() {
-  startTime = Date.now() - elapsed;
-  running = true;
-  playIcon.setAttribute('d', PAUSE_PATH);
-  playBtn.setAttribute('aria-label', 'Pausar');
-  playBtn.classList.add('running');
-  statusEl.textContent = 'en curso';
-  statusEl.classList.add('running');
-  saveBtn.disabled = true;
-  rafId = requestAnimationFrame(tick);
-}
-
-playBtn.addEventListener('click', () => {
-  if (!running) {
-    startSession();
+  let anyRunning = false;
+  activeTimers.forEach(t => {
+    if (t.running) {
+      anyRunning = true;
+      const elapsed = Date.now() - t.startTime;
+      const displayEl = document.getElementById(`display-${t.id}`);
+      if (displayEl) {
+        displayEl.textContent = fmt(elapsed);
+      }
+      const saveBtn = document.getElementById(`save-btn-${t.id}`);
+      if (saveBtn && saveBtn.disabled && elapsed >= 1000) {
+        saveBtn.disabled = false;
+      }
+    }
+  });
+  if (anyRunning) {
+    rafId = requestAnimationFrame(tick);
   } else {
-    cancelAnimationFrame(rafId);
-    running = false;
-    playIcon.setAttribute('d', PLAY_PATH);
-    playBtn.setAttribute('aria-label', 'Reanudar');
-    playBtn.classList.remove('running');
-    statusEl.textContent = 'pausado';
-    statusEl.classList.remove('running');
-    saveBtn.disabled = elapsed < 1000;
+    rafId = null;
   }
-  saveSession();
-});
+}
 
-saveBtn.addEventListener('click', () => {
+function startTickIfNeeded() {
+  if (!rafId && activeTimers.some(t => t.running)) {
+    rafId = requestAnimationFrame(tick);
+  }
+}
+
+function addTimer() {
+  const taskInput = document.getElementById('task-input');
+  const clientInput = document.getElementById('client-input');
+  const task = taskInput.value.trim() || 'Sin descripción';
+  const client = clientInput.value.trim() || 'Sin cliente';
+  
+  const newTimer = {
+    id: 'timer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+    task: task,
+    client: client,
+    running: true,
+    startTime: Date.now(),
+    elapsed: 0
+  };
+  
+  activeTimers.push(newTimer);
+  saveActiveTimers();
+  
+  taskInput.value = '';
+  clientInput.value = '';
+  saveInputs(); // limpia inputs guardados
+  
+  renderActiveTimers();
+  startTickIfNeeded();
+}
+
+function toggleActiveTimer(id) {
+  const t = activeTimers.find(timer => timer.id === id);
+  if (!t) return;
+  
+  if (t.running) {
+    t.elapsed = Date.now() - t.startTime;
+    t.running = false;
+    t.startTime = null;
+  } else {
+    t.startTime = Date.now() - t.elapsed;
+    t.running = true;
+  }
+  
+  saveActiveTimers();
+  renderActiveTimers();
+  startTickIfNeeded();
+}
+
+function deleteActiveTimer(id) {
+  if (!confirm('¿Estás seguro de que quieres eliminar este cronómetro sin guardar su tiempo?')) return;
+  activeTimers = activeTimers.filter(timer => timer.id !== id);
+  saveActiveTimers();
+  renderActiveTimers();
+  startTickIfNeeded();
+}
+
+function saveActiveTimerRecord(id) {
+  const t = activeTimers.find(timer => timer.id === id);
+  if (!t) return;
+  
+  const elapsed = t.running ? (Date.now() - t.startTime) : t.elapsed;
   if (elapsed < 1000) return;
-  const task = document.getElementById('task-input').value.trim() || 'Sin descripción';
-  const client = document.getElementById('client-input').value.trim() || 'Sin cliente';
+  
   const records = getRecords();
-  records.push({ task, client, duration: elapsed, ts: new Date().toISOString() });
+  records.push({
+    task: t.task,
+    client: t.client,
+    duration: elapsed,
+    ts: new Date().toISOString()
+  });
   setRecords(records);
-  elapsed = 0;
-  display.textContent = '00:00:00';
-  statusEl.textContent = 'guardado ✓';
-  saveBtn.disabled = true;
-  document.getElementById('task-input').value = '';
-  document.getElementById('client-input').value = '';
-  localStorage.removeItem('timer_session');
-  localStorage.removeItem('timer_inputs');
-  setTimeout(() => { statusEl.textContent = 'en espera'; }, 1800);
+  
+  activeTimers = activeTimers.filter(timer => timer.id !== id);
+  saveActiveTimers();
+  
+  renderActiveTimers();
+  startTickIfNeeded();
   renderLog();
+  
   if (!logBody.classList.contains('open')) {
     logBody.classList.add('open');
     logToggle.classList.add('open');
     logToggle.setAttribute('aria-expanded', 'true');
   }
-});
+}
 
-// Save session on visibility change (app goes background)
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) saveSession();
-});
-window.addEventListener('pagehide', saveSession);
+function renderActiveTimers() {
+  const container = document.getElementById('active-timers-container');
+  if (activeTimers.length === 0) {
+    container.innerHTML = `
+      <div class="empty-timers" id="empty-timers">
+        <p>No hay cronómetros activos</p>
+        <small>Ingresa una tarea y cliente arriba para empezar</small>
+      </div>
+    `;
+    return;
+  }
+  
+  let html = '';
+  activeTimers.forEach(t => {
+    const currentElapsed = t.running ? (Date.now() - t.startTime) : t.elapsed;
+    const playPath = t.running ? PAUSE_PATH : PLAY_PATH;
+    const ariaLabel = t.running ? 'Pausar' : 'Reanudar';
+    
+    html += `
+      <div class="timer-card" id="card-${t.id}">
+        <div class="timer-card-header">
+          <div class="timer-card-info">
+            <div class="timer-card-task" title="${escapeHtml(t.task)}">${escapeHtml(t.task)}</div>
+            <div class="timer-card-client" title="${escapeHtml(t.client)}">${escapeHtml(t.client)}</div>
+          </div>
+          <button class="card-delete-btn" onclick="deleteActiveTimer('${t.id}')" title="Eliminar sin guardar">
+            <svg viewBox="0 0 24 24">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6M14 11v6"/>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+          </button>
+        </div>
+        <div class="timer-card-body">
+          <div class="timer-card-time" id="display-${t.id}">${fmt(currentElapsed)}</div>
+          <div class="timer-card-actions">
+            <button class="card-play-btn" onclick="toggleActiveTimer('${t.id}')" aria-label="${ariaLabel}">
+              <svg viewBox="0 0 24 24">
+                <path d="${playPath}"/>
+              </svg>
+            </button>
+            <button class="card-save-btn" onclick="saveActiveTimerRecord('${t.id}')" ${currentElapsed < 1000 ? 'disabled' : ''} id="save-btn-${t.id}">
+              Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
 
 // ── log toggle ────────────────────────────────────
 logToggle.addEventListener('click', () => {
@@ -401,6 +617,7 @@ document.getElementById('modal-save').addEventListener('click', () => {
 
 // ── delete ────────────────────────────────────────
 function deleteRecord(idx) {
+  if (!confirm('¿Estás seguro de que quieres eliminar este registro?')) return;
   const records = getRecords();
   records.splice(idx, 1);
   setRecords(records);
@@ -413,7 +630,6 @@ function renderLog() {
   logCount.textContent = records.length;
   if (!records.length) { logList.innerHTML = '<p class="empty-state">Aún no hay registros</p>'; return; }
 
-  // Build index map so we keep original indices for edit/delete
   const indexed = records.map((r, i) => ({ ...r, _i: i }));
   const grouped = {};
   indexed.slice().reverse().forEach(r => {
@@ -433,8 +649,8 @@ function renderLog() {
       grouped[month][day].forEach(r => {
         html += `<div class="entry">
           <div class="entry-info">
-            <div class="entry-task">${r.task}</div>
-            <div class="entry-client">${r.client}</div>
+            <div class="entry-task">${escapeHtml(r.task)}</div>
+            <div class="entry-client">${escapeHtml(r.client)}</div>
           </div>
           <div class="entry-duration">${fmt(r.duration)}</div>
           <div class="entry-actions">
@@ -453,6 +669,30 @@ function renderLog() {
   }
   logList.innerHTML = html;
 }
+
+// ── Event Listeners ───────────────────────────────
+document.getElementById('add-timer-btn').addEventListener('click', addTimer);
+document.getElementById('task-input').addEventListener('input', saveInputs);
+document.getElementById('client-input').addEventListener('input', saveInputs);
+
+document.getElementById('task-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addTimer();
+});
+document.getElementById('client-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addTimer();
+});
+
+// Save session on visibility change (app goes background)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    saveActiveTimers();
+    saveInputs();
+  }
+});
+window.addEventListener('pagehide', () => {
+  saveActiveTimers();
+  saveInputs();
+});
 
 // ── init ──────────────────────────────────────────
 restoreSession();

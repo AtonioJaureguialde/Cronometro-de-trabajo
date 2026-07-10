@@ -38,14 +38,24 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 .header-title { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
 
 .fields { padding: 20px 24px 0; display: flex; flex-direction: column; gap: 10px; }
-.field-wrap input {
+.field-wrap input, .field-wrap select {
   width: 100%; padding: 14px 16px;
   background: var(--surface); border: 0.5px solid var(--border);
   border-radius: 12px; color: var(--text); font-family: var(--sans); font-size: 15px;
   outline: none; transition: border-color 0.15s;
 }
-.field-wrap input:focus { border-color: var(--border2); }
+.field-wrap input:focus, .field-wrap select:focus { border-color: var(--border2); }
 .field-wrap input::placeholder { color: var(--hint); }
+
+.field-wrap select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23888888' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px;
+  padding-right: 40px;
+  cursor: pointer;
+}
 
 .add-timer-btn {
   width: 100%;
@@ -301,6 +311,11 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
     <input type="text" id="task-input" placeholder="Descripción de la tarea" autocomplete="off"/>
   </div>
   <div class="field-wrap">
+    <select id="client-select">
+      <option value="manual">-- Escribir cliente manualmente --</option>
+    </select>
+  </div>
+  <div class="field-wrap" id="client-manual-wrap">
     <input type="text" id="client-input" placeholder="Cliente" autocomplete="off"/>
   </div>
   <button class="add-timer-btn" id="add-timer-btn">Iniciar nuevo cronómetro</button>
@@ -348,6 +363,11 @@ if ('serviceWorker' in navigator) {
 const PLAY_PATH  = 'M8 5v14l11-7z';
 const PAUSE_PATH = 'M6 19h4V5H6v14zm8-14v14h4V5h-4z';
 
+const preconfiguredClients = [
+  { id: 1, nombre: "Cliente A", horasContratadas: 5 },
+  { id: 2, nombre: "Cliente B", horasContratadas: 2 }
+];
+
 let activeTimers = [];
 let rafId = null;
 let editIndex = null;
@@ -360,6 +380,9 @@ const modalOv    = document.getElementById('modal-overlay');
 const editTask   = document.getElementById('edit-task');
 const editClient = document.getElementById('edit-client');
 const editDur    = document.getElementById('edit-duration');
+
+const clientSelect = document.getElementById('client-select');
+const clientManualWrap = document.getElementById('client-manual-wrap');
 
 // ── helpers ──────────────────────────────────────
 function fmt(ms) {
@@ -385,10 +408,19 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
+function initClientSelect() {
+  let html = '<option value="manual">-- Escribir cliente manualmente --</option>';
+  preconfiguredClients.forEach(c => {
+    html += `<option value="${c.id}">${c.nombre} (${c.horasContratadas}h contratadas)</option>`;
+  });
+  clientSelect.innerHTML = html;
+}
+
 // ── session persistence ───────────────────────────
 function saveInputs() {
   localStorage.setItem('timer_inputs', JSON.stringify({
     task: document.getElementById('task-input').value,
+    clientSelect: clientSelect.value,
     client: document.getElementById('client-input').value
   }));
 }
@@ -397,10 +429,22 @@ function restoreSession() {
     activeTimers = getActiveTimers();
     if (!Array.isArray(activeTimers)) activeTimers = [];
     
+    initClientSelect();
+    
     const inputs = JSON.parse(localStorage.getItem('timer_inputs') || 'null');
     if (inputs) {
       document.getElementById('task-input').value = inputs.task || '';
+      if (inputs.clientSelect) {
+        clientSelect.value = inputs.clientSelect;
+      }
       document.getElementById('client-input').value = inputs.client || '';
+    }
+    
+    // Toggle manual visibility
+    if (clientSelect.value === 'manual') {
+      clientManualWrap.style.display = 'block';
+    } else {
+      clientManualWrap.style.display = 'none';
     }
     
     renderActiveTimers();
@@ -442,9 +486,16 @@ function startTickIfNeeded() {
 
 function addTimer() {
   const taskInput = document.getElementById('task-input');
-  const clientInput = document.getElementById('client-input');
   const task = taskInput.value.trim() || 'Sin descripción';
-  const client = clientInput.value.trim() || 'Sin cliente';
+  
+  let client = 'Sin cliente';
+  if (clientSelect.value === 'manual') {
+    client = document.getElementById('client-input').value.trim() || 'Sin cliente';
+  } else {
+    const selectedId = parseInt(clientSelect.value);
+    const preClient = preconfiguredClients.find(c => c.id === selectedId);
+    client = preClient ? preClient.nombre : 'Sin cliente';
+  }
   
   const newTimer = {
     id: 'timer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -459,8 +510,10 @@ function addTimer() {
   saveActiveTimers();
   
   taskInput.value = '';
-  clientInput.value = '';
-  saveInputs(); // limpia inputs guardados
+  document.getElementById('client-input').value = '';
+  clientSelect.value = 'manual';
+  clientManualWrap.style.display = 'block';
+  saveInputs();
   
   renderActiveTimers();
   startTickIfNeeded();
@@ -680,6 +733,15 @@ document.getElementById('task-input').addEventListener('keydown', e => {
 });
 document.getElementById('client-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') addTimer();
+});
+
+clientSelect.addEventListener('change', () => {
+  if (clientSelect.value === 'manual') {
+    clientManualWrap.style.display = 'block';
+  } else {
+    clientManualWrap.style.display = 'none';
+  }
+  saveInputs();
 });
 
 // Save session on visibility change (app goes background)

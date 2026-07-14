@@ -233,6 +233,62 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   stroke-linejoin: round;
 }
 
+/* client progress section */
+.client-hours-section {
+  border-top: 0.5px solid var(--border);
+  padding: 20px 24px 10px;
+}
+.client-hours-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.client-progress-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.client-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.client-progress-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.client-progress-time {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+.client-progress-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  display: flex;
+  overflow: hidden;
+}
+.client-progress-bar {
+  height: 100%;
+}
+.client-progress-bar.green {
+  background-color: #2ecc71;
+}
+.client-progress-bar.red {
+  background-color: var(--danger);
+}
+
 /* log section styles */
 .log-section { border-top: 0.5px solid var(--border); padding-bottom: calc(24px + var(--safe-bottom)); }
 .log-toggle { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; cursor: pointer; user-select: none; }
@@ -325,6 +381,13 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 
 <div class="active-timers-container" id="active-timers-container">
   <!-- Las tarjetas de cronómetros activos se renderizan dinámicamente aquí -->
+</div>
+
+<div class="client-hours-section">
+  <div class="client-hours-title">Horas por clientes de este mes</div>
+  <div id="client-hours-list">
+    <!-- Renderizado dinámico de tarjetas de progreso por cliente -->
+  </div>
 </div>
 
 <div class="log-section">
@@ -483,6 +546,83 @@ function updateHeaderKPI() {
   document.getElementById('header-kpi').textContent = `Total este mes: ${fmtKPI(totalMs)}`;
 }
 
+// ── client progress bars ──────────────────────────
+function fmtWorkedTime(ms) {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+
+function renderClientHours() {
+  const records = getRecords();
+  const clientHoursList = document.getElementById('client-hours-list');
+  
+  const clientData = {};
+  records.forEach(r => {
+    const clientName = r.client || 'Sin cliente';
+    if (!clientData[clientName]) {
+      clientData[clientName] = 0;
+    }
+    clientData[clientName] += r.duration;
+  });
+  
+  const clientNames = Object.keys(clientData);
+  if (clientNames.length === 0) {
+    clientHoursList.innerHTML = '<p class="empty-state">No hay horas registradas este mes</p>';
+    return;
+  }
+  
+  let html = '';
+  clientNames.forEach(name => {
+    const workedMs = clientData[name];
+    const preClient = preconfiguredClients.find(c => c.nombre.toLowerCase() === name.toLowerCase());
+    
+    if (preClient) {
+      const limitHours = preClient.horasContratadas;
+      const limitMs = limitHours * 3600 * 1000;
+      
+      let greenWidth = 0;
+      let redWidth = 0;
+      
+      if (workedMs <= limitMs) {
+        greenWidth = (workedMs / limitMs) * 100;
+        redWidth = 0;
+      } else {
+        greenWidth = (limitMs / workedMs) * 100;
+        redWidth = ((workedMs - limitMs) / workedMs) * 100;
+      }
+      
+      html += `
+        <div class="client-progress-card">
+          <div class="client-progress-header">
+            <span class="client-progress-name">${escapeHtml(name)} <small style="color:var(--muted)">(${limitHours}h)</small></span>
+            <span class="client-progress-time">${fmtWorkedTime(workedMs)}</span>
+          </div>
+          <div class="client-progress-bar-bg">
+            <div class="client-progress-bar green" style="width: ${greenWidth}%"></div>
+            <div class="client-progress-bar red" style="width: ${redWidth}%"></div>
+          </div>
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="client-progress-card">
+          <div class="client-progress-header">
+            <span class="client-progress-name">${escapeHtml(name)}</span>
+            <span class="client-progress-time">${fmtWorkedTime(workedMs)}</span>
+          </div>
+          <div class="client-progress-bar-bg">
+            <div class="client-progress-bar red" style="width: 100%"></div>
+          </div>
+        </div>
+      `;
+    }
+  });
+  
+  clientHoursList.innerHTML = html;
+}
+
 // ── session persistence ───────────────────────────
 function saveInputs() {
   localStorage.setItem('timer_inputs', JSON.stringify({
@@ -604,6 +744,7 @@ function toggleActiveTimer(id) {
   startTickIfNeeded();
 }
 
+// ── delete active timer ───────────────────────────
 function deleteActiveTimer(id) {
   if (!confirm('¿Estás seguro de que quieres eliminar este cronómetro sin guardar su tiempo?')) return;
   activeTimers = activeTimers.filter(timer => timer.id !== id);
@@ -635,6 +776,7 @@ function saveActiveTimerRecord(id) {
   startTickIfNeeded();
   renderLog();
   updateHeaderKPI();
+  renderClientHours();
   
   if (!logBody.classList.contains('open')) {
     logBody.classList.add('open');
@@ -735,6 +877,7 @@ document.getElementById('modal-save').addEventListener('click', () => {
   closeModal();
   renderLog();
   updateHeaderKPI();
+  renderClientHours();
 });
 
 // ── delete ────────────────────────────────────────
@@ -745,6 +888,7 @@ function deleteRecord(idx) {
   setRecords(records);
   renderLog();
   updateHeaderKPI();
+  renderClientHours();
 }
 
 // ── render log ────────────────────────────────────
@@ -831,6 +975,7 @@ archiveOldRecords();
 restoreSession();
 renderLog();
 updateHeaderKPI();
+renderClientHours();
 </script>
 </body>
 </html>

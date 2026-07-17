@@ -1092,6 +1092,14 @@ function renderLog() {
   logList.innerHTML = html;
 }
 
+// ── log toggle ────────────────────────────────────
+logToggle.addEventListener('click', () => {
+  const open = logBody.classList.toggle('open');
+  logToggle.classList.toggle('open', open);
+  logToggle.setAttribute('aria-expanded', open);
+});
+logToggle.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') logToggle.click(); });
+
 // ── Event Listeners ───────────────────────────────
 document.getElementById('add-timer-btn').addEventListener('click', addTimer);
 document.getElementById('task-input').addEventListener('input', saveInputs);

@@ -34,6 +34,44 @@
 html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); }
 body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; min-height: 100dvh; }
 
+/* user selector bar styles */
+.user-selector-bar {
+  background: var(--surface);
+  border-bottom: 0.5px solid var(--border);
+  padding: 10px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#user-select {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  text-align: center;
+  text-align-last: center;
+  text-transform: uppercase;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23888888' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 10px;
+  padding-right: 20px;
+}
+.user-warning-text {
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+  margin-top: 6px;
+  width: 100%;
+}
+
 .header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px 0; }
 .header-title { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
 .header-kpi { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.02em; }
@@ -58,6 +96,11 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   cursor: pointer;
 }
 
+.field-wrap input:disabled, .field-wrap select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .add-timer-btn {
   width: 100%;
   padding: 14px;
@@ -73,12 +116,16 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   margin-top: 4px;
   outline: none;
 }
-.add-timer-btn:hover {
+.add-timer-btn:hover:not(:disabled) {
   background: var(--surface2);
   border-color: rgba(255,255,255,0.2);
 }
-.add-timer-btn:active {
+.add-timer-btn:active:not(:disabled) {
   transform: scale(0.98);
+}
+.add-timer-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* active timers container */
@@ -397,6 +444,21 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 </head>
 <body>
 
+<div class="user-selector-bar">
+  <select id="user-select">
+    <option value="" disabled selected>-- Selecciona tu usuario --</option>
+    <option value="Antonio">Antonio</option>
+    <option value="David">David</option>
+    <option value="Gustavo">Gustavo</option>
+    <option value="Jose">Jose</option>
+    <option value="Cristina">Cristina</option>
+    <option value="Rodri">Rodri</option>
+    <option value="Equipo">Equipo (Vista de administración)</option>
+    <option value="Invitado">Invitado</option>
+  </select>
+  <div id="user-warning-container"></div>
+</div>
+
 <div class="header">
   <span class="header-title">Cronómetro</span>
   <span class="header-kpi" id="header-kpi">Total este mes: 0h 00m</span>
@@ -487,6 +549,9 @@ const editDur    = document.getElementById('edit-duration');
 const clientSelect = document.getElementById('client-select');
 const clientManualWrap = document.getElementById('client-manual-wrap');
 
+const userSelect = document.getElementById('user-select');
+const userWarningContainer = document.getElementById('user-warning-container');
+
 // ── confirm delete variables ──────────────────────
 let activeDeleteIdx = null;
 let deleteTimeoutId = null;
@@ -512,6 +577,15 @@ function getActiveTimers() { return JSON.parse(localStorage.getItem('active_time
 function setActiveTimers(timers) { localStorage.setItem('active_timers', JSON.stringify(timers)); }
 function saveActiveTimers() { setActiveTimers(activeTimers); }
 
+function getActiveUser() { return localStorage.getItem('active_user') || ''; }
+function setActiveUser(user) {
+  if (user) {
+    localStorage.setItem('active_user', user);
+  } else {
+    localStorage.removeItem('active_user');
+  }
+}
+
 function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
@@ -522,6 +596,77 @@ function initClientSelect() {
     html += `<option value="${c.id}">${c.nombre} (${c.horasContratadas}h contratadas)</option>`;
   });
   clientSelect.innerHTML = html;
+}
+
+// ── user selection & migration ────────────────────
+function migrateOldRecordsToUser(selectedUser) {
+  if (selectedUser === 'Equipo') return;
+  try {
+    const records = getRecords();
+    let updated = false;
+    records.forEach(r => {
+      if (!r.user) {
+        r.user = selectedUser;
+        updated = true;
+      }
+    });
+    if (updated) {
+      setRecords(records);
+    }
+  } catch (e) {
+    console.error("Error migrating old records:", e);
+  }
+}
+
+function handleUserChange() {
+  const activeUser = getActiveUser();
+  const addBtn = document.getElementById('add-timer-btn');
+  const taskInput = document.getElementById('task-input');
+  const clientSelect = document.getElementById('client-select');
+  const clientInput = document.getElementById('client-input');
+  
+  if (!activeUser) {
+    // Bloquear formulario
+    addBtn.disabled = true;
+    addBtn.textContent = 'Selecciona tu usuario arriba';
+    taskInput.disabled = true;
+    clientSelect.disabled = true;
+    clientInput.disabled = true;
+    
+    userWarningContainer.innerHTML = '<div class="user-warning-text">⚠️ Selecciona tu usuario para sincronizar y empezar a registrar</div>';
+    userSelect.value = '';
+  } else if (activeUser === 'Equipo') {
+    // Bloquear formulario para vista de Equipo
+    addBtn.disabled = true;
+    addBtn.textContent = 'Selecciona un usuario individual';
+    taskInput.disabled = true;
+    clientSelect.disabled = true;
+    clientInput.disabled = true;
+    
+    userWarningContainer.innerHTML = '<div class="user-warning-text" style="color:var(--muted)">⚠️ Vista de Equipo: No se pueden registrar tareas en esta vista</div>';
+    userSelect.value = 'Equipo';
+  } else {
+    // Usuario individual activo
+    addBtn.disabled = false;
+    addBtn.textContent = 'Iniciar nuevo cronómetro';
+    taskInput.disabled = false;
+    clientSelect.disabled = false;
+    
+    if (clientSelect.value === 'manual') {
+      clientInput.disabled = false;
+    } else {
+      clientInput.disabled = true;
+    }
+    
+    userWarningContainer.innerHTML = '';
+    userSelect.value = activeUser;
+  }
+  
+  renderActiveTimers();
+  startTickIfNeeded();
+  renderLog();
+  updateHeaderKPI();
+  renderClientHours();
 }
 
 // ── monthly grouping and archiving ────────────────
@@ -585,7 +730,9 @@ function fmtKPI(ms) {
 
 function updateHeaderKPI() {
   const records = getRecords();
-  const totalMs = records.reduce((sum, r) => sum + r.duration, 0);
+  const activeUser = getActiveUser();
+  const filtered = records.filter(r => activeUser === 'Equipo' || r.user === activeUser);
+  const totalMs = filtered.reduce((sum, r) => sum + r.duration, 0);
   document.getElementById('header-kpi').textContent = `Total este mes: ${fmtKPI(totalMs)}`;
 }
 
@@ -599,10 +746,12 @@ function fmtWorkedTime(ms) {
 
 function renderClientHours() {
   const records = getRecords();
+  const activeUser = getActiveUser();
+  const filtered = records.filter(r => activeUser === 'Equipo' || r.user === activeUser);
   const clientHoursList = document.getElementById('client-hours-list');
   
   const clientData = {};
-  records.forEach(r => {
+  filtered.forEach(r => {
     const clientName = r.client || 'Sin cliente';
     if (!clientData[clientName]) {
       clientData[clientName] = 0;
@@ -690,15 +839,7 @@ function restoreSession() {
       document.getElementById('client-input').value = inputs.client || '';
     }
     
-    // Toggle manual visibility
-    if (clientSelect.value === 'manual') {
-      clientManualWrap.style.display = 'block';
-    } else {
-      clientManualWrap.style.display = 'none';
-    }
-    
-    renderActiveTimers();
-    startTickIfNeeded();
+    handleUserChange();
   } catch(e) {
     activeTimers = [];
   }
@@ -735,6 +876,9 @@ function startTickIfNeeded() {
 }
 
 function addTimer() {
+  const activeUser = getActiveUser();
+  if (!activeUser || activeUser === 'Equipo') return;
+  
   const taskInput = document.getElementById('task-input');
   const task = taskInput.value.trim() || 'Sin descripción';
   
@@ -753,7 +897,8 @@ function addTimer() {
     client: client,
     running: true,
     startTime: Date.now(),
-    elapsed: 0
+    elapsed: 0,
+    user: activeUser
   };
   
   activeTimers.push(newTimer);
@@ -762,11 +907,9 @@ function addTimer() {
   taskInput.value = '';
   document.getElementById('client-input').value = '';
   clientSelect.value = 'manual';
-  clientManualWrap.style.display = 'block';
-  saveInputs();
   
-  renderActiveTimers();
-  startTickIfNeeded();
+  handleUserChange();
+  saveInputs();
 }
 
 function toggleActiveTimer(id) {
@@ -808,7 +951,8 @@ function saveActiveTimerRecord(id) {
     task: t.task,
     client: t.client,
     duration: elapsed,
-    ts: new Date().toISOString()
+    ts: new Date().toISOString(),
+    user: t.user || getActiveUser() || 'Invitado'
   });
   setRecords(records);
   
@@ -830,21 +974,26 @@ function saveActiveTimerRecord(id) {
 
 function renderActiveTimers() {
   const container = document.getElementById('active-timers-container');
-  if (activeTimers.length === 0) {
+  const activeUser = getActiveUser();
+  
+  const filteredActive = activeTimers.filter(t => activeUser === 'Equipo' || t.user === activeUser);
+  
+  if (filteredActive.length === 0) {
     container.innerHTML = `
       <div class="empty-timers" id="empty-timers">
         <p>No hay cronómetros activos</p>
-        <small>Ingresa una tarea y cliente arriba para empezar</small>
+        <small>${activeUser === 'Equipo' ? 'Ningún usuario tiene cronómetros activos' : 'Ingresa una tarea y cliente arriba para empezar'}</small>
       </div>
     `;
     return;
   }
   
   let html = '';
-  activeTimers.forEach(t => {
+  filteredActive.forEach(t => {
     const currentElapsed = t.running ? (Date.now() - t.startTime) : t.elapsed;
     const playPath = t.running ? PAUSE_PATH : PLAY_PATH;
     const ariaLabel = t.running ? 'Pausar' : 'Reanudar';
+    const userLabel = activeUser === 'Equipo' ? `<small style="color:var(--muted); font-size:10px; margin-top:2px; display:block;">Usuario: ${t.user || 'Desconocido'}</small>` : '';
     
     html += `
       <div class="timer-card" id="card-${t.id}">
@@ -852,6 +1001,7 @@ function renderActiveTimers() {
           <div class="timer-card-info">
             <div class="timer-card-task" title="${escapeHtml(t.task)}">${escapeHtml(t.task)}</div>
             <div class="timer-card-client" title="${escapeHtml(t.client)}">${escapeHtml(t.client)}</div>
+            ${userLabel}
           </div>
           <button class="card-delete-btn" onclick="deleteActiveTimer('${t.id}')" title="Eliminar sin guardar">
             <svg viewBox="0 0 24 24">
@@ -1049,12 +1199,16 @@ document.getElementById('modal-save').addEventListener('click', () => {
 // ── render log ────────────────────────────────────
 function renderLog() {
   const records = getRecords();
-  logCount.textContent = records.length;
-  if (!records.length) { logList.innerHTML = '<p class="empty-state">Aún no hay registros</p>'; return; }
-
+  const activeUser = getActiveUser();
+  
   const indexed = records.map((r, i) => ({ ...r, _i: i }));
+  const filtered = indexed.filter(r => activeUser === 'Equipo' || r.user === activeUser);
+  
+  logCount.textContent = filtered.length;
+  if (!filtered.length) { logList.innerHTML = '<p class="empty-state">Aún no hay registros</p>'; return; }
+
   const grouped = {};
-  indexed.slice().reverse().forEach(r => {
+  filtered.slice().reverse().forEach(r => {
     const d = new Date(r.ts);
     const mk = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
     const dk = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -1069,10 +1223,12 @@ function renderLog() {
     for (const day in grouped[month]) {
       html += `<div class="day-block"><div class="day-heading">${day}</div>`;
       grouped[month][day].forEach(r => {
+        const userBadge = activeUser === 'Equipo' ? `<div class="entry-client" style="color: var(--muted); font-size: 11px;">Usuario: ${r.user || 'Desconocido'}</div>` : '';
         html += `<div class="entry">
           <div class="entry-info">
             <div class="entry-task">${escapeHtml(r.task)}</div>
             <div class="entry-client">${escapeHtml(r.client)}</div>
+            ${userBadge}
           </div>
           <div class="entry-duration">${fmt(r.duration)}</div>
           <div class="entry-actions">
@@ -1092,14 +1248,6 @@ function renderLog() {
   logList.innerHTML = html;
 }
 
-// ── log toggle ────────────────────────────────────
-logToggle.addEventListener('click', () => {
-  const open = logBody.classList.toggle('open');
-  logToggle.classList.toggle('open', open);
-  logToggle.setAttribute('aria-expanded', open);
-});
-logToggle.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') logToggle.click(); });
-
 // ── Event Listeners ───────────────────────────────
 document.getElementById('add-timer-btn').addEventListener('click', addTimer);
 document.getElementById('task-input').addEventListener('input', saveInputs);
@@ -1115,10 +1263,25 @@ document.getElementById('client-input').addEventListener('keydown', e => {
 clientSelect.addEventListener('change', () => {
   if (clientSelect.value === 'manual') {
     clientManualWrap.style.display = 'block';
+    if (getActiveUser() !== 'Equipo') {
+      document.getElementById('client-input').disabled = false;
+    }
   } else {
     clientManualWrap.style.display = 'none';
+    document.getElementById('client-input').disabled = true;
   }
   saveInputs();
+});
+
+userSelect.addEventListener('change', () => {
+  const selectedVal = userSelect.value;
+  setActiveUser(selectedVal);
+  
+  if (selectedVal && selectedVal !== 'Equipo') {
+    migrateOldRecordsToUser(selectedVal);
+  }
+  
+  handleUserChange();
 });
 
 // Click outside cancel delete confirmation
@@ -1129,6 +1292,14 @@ document.addEventListener('click', (e) => {
     }
   }
 });
+
+// ── log toggle ────────────────────────────────────
+logToggle.addEventListener('click', () => {
+  const open = logBody.classList.toggle('open');
+  logToggle.classList.toggle('open', open);
+  logToggle.setAttribute('aria-expanded', open);
+});
+logToggle.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') logToggle.click(); });
 
 // Save session on visibility change (app goes background)
 document.addEventListener('visibilitychange', () => {

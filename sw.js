@@ -1,4 +1,4 @@
-const CACHE = 'timer-v9';
+const CACHE = 'timer-v10';
 const ASSETS = ['./index.html', './manifest.json'];
 
 self.addEventListener('install', e => {

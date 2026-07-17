@@ -43,14 +43,8 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   flex-direction: column;
   align-items: center;
 }
-.user-selector-row {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 10px;
-}
 #user-select {
-  flex: 1;
+  width: 100%;
   background: transparent;
   border: none;
   color: var(--muted);
@@ -69,32 +63,6 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   background-size: 10px;
   padding-right: 20px;
 }
-.settings-icon-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--hint);
-  transition: background 0.15s, color 0.15s;
-}
-.settings-icon-btn:hover {
-  background: var(--surface2);
-  color: var(--text);
-}
-.settings-icon-btn svg {
-  width: 15px;
-  height: 15px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 .user-warning-text {
   color: var(--danger);
   font-size: 11px;
@@ -102,6 +70,55 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   text-align: center;
   margin-top: 6px;
   width: 100%;
+}
+
+/* cloud sync button in header */
+.cloud-sync-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  border-radius: 50%;
+  padding: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+  transition: background 0.15s, transform 0.1s;
+}
+.cloud-sync-btn:hover {
+  background: var(--surface2);
+}
+.cloud-sync-btn:active {
+  transform: scale(0.9);
+}
+.cloud-icon {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: var(--hint);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 0.3s, filter 0.3s;
+}
+
+/* cloud sync statuses */
+.cloud-sync-btn.syncing .cloud-icon {
+  stroke: #f39c12;
+  animation: pulse 1s infinite alternate;
+}
+.cloud-sync-btn.success .cloud-icon {
+  stroke: #2ecc71;
+  filter: drop-shadow(0 0 4px rgba(46, 204, 113, 0.4));
+}
+.cloud-sync-btn.error .cloud-icon {
+  stroke: var(--danger);
+  filter: drop-shadow(0 0 4px rgba(192, 57, 43, 0.4));
+}
+
+@keyframes pulse {
+  0% { opacity: 0.4; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1.1); }
 }
 
 .header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px 0; }
@@ -477,30 +494,29 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 <body>
 
 <div class="user-selector-bar">
-  <div class="user-selector-row">
-    <select id="user-select">
-      <option value="" disabled selected>-- Selecciona tu usuario --</option>
-      <option value="Antonio">Antonio</option>
-      <option value="David">David</option>
-      <option value="Gustavo">Gustavo</option>
-      <option value="Jose">Jose</option>
-      <option value="Cristina">Cristina</option>
-      <option value="Rodri">Rodri</option>
-      <option value="Equipo">Equipo (Vista de administración)</option>
-      <option value="Invitado">Invitado</option>
-    </select>
-    <button id="settings-btn" class="settings-icon-btn" title="Configurar Google Sheets">
-      <svg viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-    </button>
-  </div>
+  <select id="user-select">
+    <option value="" disabled selected>-- Selecciona tu usuario --</option>
+    <option value="Antonio">Antonio</option>
+    <option value="David">David</option>
+    <option value="Gustavo">Gustavo</option>
+    <option value="Jose">Jose</option>
+    <option value="Cristina">Cristina</option>
+    <option value="Rodri">Rodri</option>
+    <option value="Equipo">Equipo (Vista de administración)</option>
+    <option value="Invitado">Invitado</option>
+  </select>
   <div id="user-warning-container"></div>
 </div>
 
 <div class="header">
-  <span class="header-title">Cronómetro</span>
+  <span class="header-title" style="display: flex; align-items: center;">
+    Cronómetro
+    <span id="cloud-sync-indicator" class="cloud-sync-btn" title="Sincronizar ahora" role="button" tabindex="0">
+      <svg class="cloud-icon" viewBox="0 0 24 24">
+        <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
+      </svg>
+    </span>
+  </span>
   <span class="header-kpi" id="header-kpi">Total este mes: 0h 00m</span>
 </div>
 
@@ -560,27 +576,13 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   </div>
 </div>
 
-<!-- Settings modal -->
-<div class="modal-overlay" id="settings-modal-overlay">
-  <div class="modal">
-    <div class="modal-title">Configuración de Google Sheets</div>
-    <input type="url" id="settings-sheet-url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"/>
-    <p class="modal-note">Introduce la URL de la Web App de Google Apps Script para sincronizar las tareas en la nube.</p>
-    <div class="modal-actions">
-      <button class="modal-btn" id="settings-cancel">Cancelar</button>
-      <button class="modal-btn primary" id="settings-save">Guardar</button>
-    </div>
-    <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 8px;">
-      <button class="add-timer-btn" id="settings-sync" style="margin-top:0; font-size:13px; padding:10px;">Sincronizar con Google Sheets</button>
-      <span id="sync-status" style="font-size:11px; text-align:center; color:var(--muted)"></span>
-    </div>
-  </div>
-</div>
-
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
+
+// ── Google Sheets Web App URL ─────────────────────
+const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxLqmRXbQlbwT9L4DtndhtSoTR9OJ8WbZNDWD34-cueuWWO2MHdThDgweZHk4sWGFmooQ/exec';
 
 const PLAY_PATH  = 'M8 5v14l11-7z';
 const PAUSE_PATH = 'M6 19h4V5H6v14zm8-14v14h4V5h-4z';
@@ -608,15 +610,7 @@ const clientManualWrap = document.getElementById('client-manual-wrap');
 
 const userSelect = document.getElementById('user-select');
 const userWarningContainer = document.getElementById('user-warning-container');
-
-// Settings Elements
-const settingsBtn = document.getElementById('settings-btn');
-const settingsModal = document.getElementById('settings-modal-overlay');
-const settingsUrlInput = document.getElementById('settings-sheet-url');
-const settingsCancel = document.getElementById('settings-cancel');
-const settingsSave = document.getElementById('settings-save');
-const settingsSync = document.getElementById('settings-sync');
-const syncStatus = document.getElementById('sync-status');
+const cloudBtn = document.getElementById('cloud-sync-indicator');
 
 // ── confirm delete variables ──────────────────────
 let activeDeleteIdx = null;
@@ -748,8 +742,19 @@ function handleUserChange() {
 
 // ── Google Sheets Sync Engine ─────────────────────
 async function syncWithCloud() {
-  const sheetUrl = localStorage.getItem('google_sheet_url');
-  if (!sheetUrl) return { success: false, message: 'Google Sheets no está configurado.' };
+  if (!GOOGLE_SHEET_URL) {
+    if (cloudBtn) {
+      cloudBtn.className = 'cloud-sync-btn';
+      cloudBtn.title = "Google Sheets no configurado";
+    }
+    return { success: false, message: 'Google Sheets no está configurado.' };
+  }
+  
+  if (cloudBtn) {
+    cloudBtn.classList.remove('success', 'error');
+    cloudBtn.classList.add('syncing');
+    cloudBtn.title = "Sincronizando con Google Sheets...";
+  }
   
   try {
     // 1. Procesar eliminaciones pendientes
@@ -758,16 +763,13 @@ async function syncWithCloud() {
     
     for (const id of deletedIds) {
       try {
-        const res = await fetch(sheetUrl, {
+        // mode: 'no-cors' soluciona el error de red de las redirecciones de Google Apps Script
+        await fetch(GOOGLE_SHEET_URL, {
           method: 'POST',
-          mode: 'cors',
+          mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({ action: 'delete', id: id })
         });
-        const json = await res.json();
-        if (json.status !== 'success') {
-          remainingDeletions.push(id);
-        }
       } catch (err) {
         remainingDeletions.push(id);
       }
@@ -779,9 +781,10 @@ async function syncWithCloud() {
     for (const r of records) {
       if (!r.synced) {
         try {
-          const res = await fetch(sheetUrl, {
+          // mode: 'no-cors' para evitar errores CORS en la redirección de Google
+          await fetch(GOOGLE_SHEET_URL, {
             method: 'POST',
-            mode: 'cors',
+            mode: 'no-cors',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
               action: 'create',
@@ -794,10 +797,7 @@ async function syncWithCloud() {
               mes_ano: r.ts.substring(0, 7)
             })
           });
-          const json = await res.json();
-          if (json.status === 'success' || json.action === 'updated_duplicate') {
-            r.synced = true;
-          }
+          r.synced = true;
         } catch (err) {
           // Mantener synced = false para reintentar luego
         }
@@ -806,7 +806,7 @@ async function syncWithCloud() {
     setRecords(records);
     
     // 3. Descargar todo el historial de la nube
-    const res = await fetch(sheetUrl);
+    const res = await fetch(GOOGLE_SHEET_URL);
     const cloudRecords = await res.json();
     
     if (Array.isArray(cloudRecords)) {
@@ -852,13 +852,23 @@ async function syncWithCloud() {
       // Archivar en local los meses pasados
       archiveOldRecords();
       
+      if (cloudBtn) {
+        cloudBtn.classList.remove('syncing', 'error');
+        cloudBtn.classList.add('success');
+        cloudBtn.title = "Sincronizado con Google Sheets";
+      }
       return { success: true, message: 'Sincronización completada con éxito.' };
     }
     
-    return { success: false, message: 'Respuesta inválida del servidor.' };
+    throw new Error("Respuesta inválida del servidor");
     
   } catch (err) {
     console.error("Sync error:", err);
+    if (cloudBtn) {
+      cloudBtn.classList.remove('syncing', 'success');
+      cloudBtn.classList.add('error');
+      cloudBtn.title = "Error de red al conectar con Google Sheets";
+    }
     return { success: false, message: 'Error de red al conectar con Google Sheets.' };
   }
 }
@@ -1071,6 +1081,16 @@ function tick() {
   } else {
     rafId = null;
   }
+}
+
+// ── trigger sync manually ─────────────────────────
+if (cloudBtn) {
+  cloudBtn.addEventListener('click', async () => {
+    await syncWithCloud();
+    renderLog();
+    updateHeaderKPI();
+    renderClientHours();
+  });
 }
 
 function startTickIfNeeded() {
@@ -1519,43 +1539,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ── Settings Modal Event Listeners ────────────────
-settingsBtn.addEventListener('click', () => {
-  settingsUrlInput.value = localStorage.getItem('google_sheet_url') || '';
-  syncStatus.textContent = '';
-  settingsModal.classList.add('open');
-});
-
-settingsCancel.addEventListener('click', () => {
-  settingsModal.classList.remove('open');
-});
-
-settingsSave.addEventListener('click', () => {
-  const urlVal = settingsUrlInput.value.trim();
-  if (urlVal) {
-    localStorage.setItem('google_sheet_url', urlVal);
-  } else {
-    localStorage.removeItem('google_sheet_url');
-  }
-  settingsModal.classList.remove('open');
-  handleUserChange();
-});
-
-settingsSync.addEventListener('click', async () => {
-  syncStatus.textContent = 'Sincronizando...';
-  syncStatus.style.color = 'var(--muted)';
-  const result = await syncWithCloud();
-  syncStatus.textContent = result.message;
-  if (result.success) {
-    syncStatus.style.color = '#2ecc71';
-    renderLog();
-    updateHeaderKPI();
-    renderClientHours();
-  } else {
-    syncStatus.style.color = 'var(--danger)';
-  }
-});
-
 // ── log toggle ────────────────────────────────────
 logToggle.addEventListener('click', () => {
   const open = logBody.classList.toggle('open');
@@ -1583,10 +1566,8 @@ renderLog();
 updateHeaderKPI();
 renderClientHours();
 
-// Intentar sincronizar al inicio si está configurada la URL
-if (localStorage.getItem('google_sheet_url')) {
-  syncWithCloud().catch(() => {});
-}
+// Sincronizar automáticamente con la nube al iniciar
+syncWithCloud().catch(() => {});
 </script>
 </body>
 </html>

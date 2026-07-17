@@ -43,8 +43,14 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   flex-direction: column;
   align-items: center;
 }
-#user-select {
+.user-selector-row {
+  display: flex;
   width: 100%;
+  align-items: center;
+  gap: 10px;
+}
+#user-select {
+  flex: 1;
   background: transparent;
   border: none;
   color: var(--muted);
@@ -62,6 +68,32 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   background-position: right 8px center;
   background-size: 10px;
   padding-right: 20px;
+}
+.settings-icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hint);
+  transition: background 0.15s, color 0.15s;
+}
+.settings-icon-btn:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+.settings-icon-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .user-warning-text {
   color: var(--danger);
@@ -445,17 +477,25 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 <body>
 
 <div class="user-selector-bar">
-  <select id="user-select">
-    <option value="" disabled selected>-- Selecciona tu usuario --</option>
-    <option value="Antonio">Antonio</option>
-    <option value="David">David</option>
-    <option value="Gustavo">Gustavo</option>
-    <option value="Jose">Jose</option>
-    <option value="Cristina">Cristina</option>
-    <option value="Rodri">Rodri</option>
-    <option value="Equipo">Equipo (Vista de administración)</option>
-    <option value="Invitado">Invitado</option>
-  </select>
+  <div class="user-selector-row">
+    <select id="user-select">
+      <option value="" disabled selected>-- Selecciona tu usuario --</option>
+      <option value="Antonio">Antonio</option>
+      <option value="David">David</option>
+      <option value="Gustavo">Gustavo</option>
+      <option value="Jose">Jose</option>
+      <option value="Cristina">Cristina</option>
+      <option value="Rodri">Rodri</option>
+      <option value="Equipo">Equipo (Vista de administración)</option>
+      <option value="Invitado">Invitado</option>
+    </select>
+    <button id="settings-btn" class="settings-icon-btn" title="Configurar Google Sheets">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </div>
   <div id="user-warning-container"></div>
 </div>
 
@@ -520,6 +560,23 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   </div>
 </div>
 
+<!-- Settings modal -->
+<div class="modal-overlay" id="settings-modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Configuración de Google Sheets</div>
+    <input type="url" id="settings-sheet-url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"/>
+    <p class="modal-note">Introduce la URL de la Web App de Google Apps Script para sincronizar las tareas en la nube.</p>
+    <div class="modal-actions">
+      <button class="modal-btn" id="settings-cancel">Cancelar</button>
+      <button class="modal-btn primary" id="settings-save">Guardar</button>
+    </div>
+    <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 8px;">
+      <button class="add-timer-btn" id="settings-sync" style="margin-top:0; font-size:13px; padding:10px;">Sincronizar con Google Sheets</button>
+      <span id="sync-status" style="font-size:11px; text-align:center; color:var(--muted)"></span>
+    </div>
+  </div>
+</div>
+
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -552,12 +609,24 @@ const clientManualWrap = document.getElementById('client-manual-wrap');
 const userSelect = document.getElementById('user-select');
 const userWarningContainer = document.getElementById('user-warning-container');
 
+// Settings Elements
+const settingsBtn = document.getElementById('settings-btn');
+const settingsModal = document.getElementById('settings-modal-overlay');
+const settingsUrlInput = document.getElementById('settings-sheet-url');
+const settingsCancel = document.getElementById('settings-cancel');
+const settingsSave = document.getElementById('settings-save');
+const settingsSync = document.getElementById('settings-sync');
+const syncStatus = document.getElementById('sync-status');
+
 // ── confirm delete variables ──────────────────────
 let activeDeleteIdx = null;
 let deleteTimeoutId = null;
 let activeDeleteCard = null;
 
 // ── helpers ──────────────────────────────────────
+function generateUniqueId() {
+  return 'rec_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + Math.floor(Math.random() * 1000);
+}
 function fmt(ms) {
   const s = Math.floor(ms / 1000);
   const h = Math.floor(s / 3600);
@@ -607,6 +676,14 @@ function migrateOldRecordsToUser(selectedUser) {
     records.forEach(r => {
       if (!r.user) {
         r.user = selectedUser;
+        updated = true;
+      }
+      if (!r.id) {
+        r.id = generateUniqueId();
+        updated = true;
+      }
+      if (r.synced === undefined) {
+        r.synced = false;
         updated = true;
       }
     });
@@ -669,6 +746,123 @@ function handleUserChange() {
   renderClientHours();
 }
 
+// ── Google Sheets Sync Engine ─────────────────────
+async function syncWithCloud() {
+  const sheetUrl = localStorage.getItem('google_sheet_url');
+  if (!sheetUrl) return { success: false, message: 'Google Sheets no está configurado.' };
+  
+  try {
+    // 1. Procesar eliminaciones pendientes
+    const deletedIds = JSON.parse(localStorage.getItem('deleted_record_ids') || '[]');
+    const remainingDeletions = [];
+    
+    for (const id of deletedIds) {
+      try {
+        const res = await fetch(sheetUrl, {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'delete', id: id })
+        });
+        const json = await res.json();
+        if (json.status !== 'success') {
+          remainingDeletions.push(id);
+        }
+      } catch (err) {
+        remainingDeletions.push(id);
+      }
+    }
+    localStorage.setItem('deleted_record_ids', JSON.stringify(remainingDeletions));
+    
+    // 2. Subir registros locales no sincronizados
+    const records = getRecords();
+    for (const r of records) {
+      if (!r.synced) {
+        try {
+          const res = await fetch(sheetUrl, {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({
+              action: 'create',
+              id: r.id,
+              usuario: r.user || 'Invitado',
+              cliente: r.client || 'Sin cliente',
+              descripcion: r.task || 'Sin descripción',
+              duracion_segundos: Math.floor(r.duration / 1000),
+              fecha_registro: r.ts.replace('T', ' ').substring(0, 19),
+              mes_ano: r.ts.substring(0, 7)
+            })
+          });
+          const json = await res.json();
+          if (json.status === 'success' || json.action === 'updated_duplicate') {
+            r.synced = true;
+          }
+        } catch (err) {
+          // Mantener synced = false para reintentar luego
+        }
+      }
+    }
+    setRecords(records);
+    
+    // 3. Descargar todo el historial de la nube
+    const res = await fetch(sheetUrl);
+    const cloudRecords = await res.json();
+    
+    if (Array.isArray(cloudRecords)) {
+      // Convertir formato de Sheets al formato local de la app
+      const formattedCloud = cloudRecords.map(c => {
+        let tsIso = new Date().toISOString();
+        if (c.fecha_registro) {
+          const dateStr = String(c.fecha_registro).replace(' ', 'T');
+          const d = new Date(dateStr);
+          if (!isNaN(d.getTime())) {
+            tsIso = d.toISOString();
+          }
+        }
+        return {
+          id: c.id,
+          user: c.usuario || 'Invitado',
+          client: c.cliente || 'Sin cliente',
+          task: c.descripcion || 'Sin descripción',
+          duration: Number(c.duracion_segundos || 0) * 1000,
+          ts: tsIso,
+          synced: true
+        };
+      });
+      
+      // Filtrar borrados que aún no se hayan propagado a la nube
+      const activeDeletedIds = JSON.parse(localStorage.getItem('deleted_record_ids') || '[]');
+      const filteredCloud = formattedCloud.filter(c => !activeDeletedIds.includes(c.id));
+      
+      // Mantener los locales no sincronizados
+      const localUnsynced = records.filter(r => !r.synced);
+      
+      // Combinar datos locales y remotos sin duplicar IDs
+      const combined = [...localUnsynced];
+      filteredCloud.forEach(cloudRec => {
+        if (!combined.some(r => r.id === cloudRec.id)) {
+          combined.push(cloudRec);
+        }
+      });
+      
+      combined.sort((a, b) => new Date(a.ts) - new Date(b.ts));
+      setRecords(combined);
+      
+      // Archivar en local los meses pasados
+      archiveOldRecords();
+      
+      return { success: true, message: 'Sincronización completada con éxito.' };
+    }
+    
+    return { success: false, message: 'Respuesta inválida del servidor.' };
+    
+  } catch (err) {
+    console.error("Sync error:", err);
+    return { success: false, message: 'Error de red al conectar con Google Sheets.' };
+  }
+}
+
 // ── monthly grouping and archiving ────────────────
 function getYearMonth(date) {
   const y = date.getFullYear();
@@ -688,6 +882,9 @@ function archiveOldRecords() {
       if (!r.ts) {
         r.ts = new Date().toISOString();
       }
+      if (!r.id) {
+        r.id = generateUniqueId();
+      }
       
       const recordDate = new Date(r.ts);
       if (isNaN(recordDate.getTime())) {
@@ -706,15 +903,22 @@ function archiveOldRecords() {
       }
     });
     
-    // Save to historical archive
+    // Guardar en el histórico evitando duplicidades por ID
     for (const ym in archiveGroups) {
       const key = `registros_${ym}`;
       const existingArchive = JSON.parse(localStorage.getItem(key) || '[]');
-      const combined = [...existingArchive, ...archiveGroups[ym]];
+      
+      const combined = [...existingArchive];
+      archiveGroups[ym].forEach(newRec => {
+        if (!combined.some(r => r.id === newRec.id)) {
+          combined.push(newRec);
+        }
+      });
+      
       localStorage.setItem(key, JSON.stringify(combined));
     }
     
-    // Keep only current month's records
+    // Mantener solo los registros del mes actual
     setRecords(currentMonthRecords);
   } catch (e) {
     console.error("Error archiving records:", e);
@@ -947,13 +1151,16 @@ function saveActiveTimerRecord(id) {
   if (elapsed < 1000) return;
   
   const records = getRecords();
-  records.push({
+  const newRecord = {
+    id: generateUniqueId(),
     task: t.task,
     client: t.client,
     duration: elapsed,
     ts: new Date().toISOString(),
-    user: t.user || getActiveUser() || 'Invitado'
-  });
+    user: t.user || getActiveUser() || 'Invitado',
+    synced: false
+  };
+  records.push(newRecord);
   setRecords(records);
   
   activeTimers = activeTimers.filter(timer => timer.id !== id);
@@ -964,6 +1171,9 @@ function saveActiveTimerRecord(id) {
   renderLog();
   updateHeaderKPI();
   renderClientHours();
+  
+  // Sincronizar en segundo plano
+  syncWithCloud().catch(() => {});
   
   if (!logBody.classList.contains('open')) {
     logBody.classList.add('open');
@@ -1123,6 +1333,15 @@ function deleteRecord(e, idx) {
     
     setTimeout(() => {
       const records = getRecords();
+      const deletedRec = records[idx];
+      if (deletedRec && deletedRec.id) {
+        const deletedIds = JSON.parse(localStorage.getItem('deleted_record_ids') || '[]');
+        if (!deletedIds.includes(deletedRec.id)) {
+          deletedIds.push(deletedRec.id);
+          localStorage.setItem('deleted_record_ids', JSON.stringify(deletedIds));
+        }
+      }
+      
       records.splice(idx, 1);
       setRecords(records);
       renderLog();
@@ -1131,6 +1350,9 @@ function deleteRecord(e, idx) {
       
       activeDeleteIdx = null;
       activeDeleteCard = null;
+      
+      // Sincronizar en segundo plano
+      syncWithCloud().catch(() => {});
     }, 600);
   } else {
     // First click: Enter confirming state
@@ -1187,13 +1409,17 @@ document.getElementById('modal-save').addEventListener('click', () => {
     ...records[editIndex],
     task: editTask.value.trim() || 'Sin descripción',
     client: editClient.value.trim() || 'Sin cliente',
-    duration: dur
+    duration: dur,
+    synced: false // Forzar resincronización del registro modificado
   };
   setRecords(records);
   closeModal();
   renderLog();
   updateHeaderKPI();
   renderClientHours();
+  
+  // Sincronizar en segundo plano
+  syncWithCloud().catch(() => {});
 });
 
 // ── render log ────────────────────────────────────
@@ -1293,6 +1519,43 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// ── Settings Modal Event Listeners ────────────────
+settingsBtn.addEventListener('click', () => {
+  settingsUrlInput.value = localStorage.getItem('google_sheet_url') || '';
+  syncStatus.textContent = '';
+  settingsModal.classList.add('open');
+});
+
+settingsCancel.addEventListener('click', () => {
+  settingsModal.classList.remove('open');
+});
+
+settingsSave.addEventListener('click', () => {
+  const urlVal = settingsUrlInput.value.trim();
+  if (urlVal) {
+    localStorage.setItem('google_sheet_url', urlVal);
+  } else {
+    localStorage.removeItem('google_sheet_url');
+  }
+  settingsModal.classList.remove('open');
+  handleUserChange();
+});
+
+settingsSync.addEventListener('click', async () => {
+  syncStatus.textContent = 'Sincronizando...';
+  syncStatus.style.color = 'var(--muted)';
+  const result = await syncWithCloud();
+  syncStatus.textContent = result.message;
+  if (result.success) {
+    syncStatus.style.color = '#2ecc71';
+    renderLog();
+    updateHeaderKPI();
+    renderClientHours();
+  } else {
+    syncStatus.style.color = 'var(--danger)';
+  }
+});
+
 // ── log toggle ────────────────────────────────────
 logToggle.addEventListener('click', () => {
   const open = logBody.classList.toggle('open');
@@ -1319,6 +1582,11 @@ restoreSession();
 renderLog();
 updateHeaderKPI();
 renderClientHours();
+
+// Intentar sincronizar al inicio si está configurada la URL
+if (localStorage.getItem('google_sheet_url')) {
+  syncWithCloud().catch(() => {});
+}
 </script>
 </body>
 </html>

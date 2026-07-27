@@ -654,6 +654,7 @@ body.mode-equipo .client-hours-section {
     <input type="text" id="edit-task" placeholder="Descripción"/>
     <input type="text" id="edit-client" placeholder="Cliente"/>
     <input type="text" id="edit-duration" placeholder="Duración hh:mm:ss"/>
+    <input type="datetime-local" id="edit-date" style="color-scheme: dark; margin-bottom: 10px;"/>
     <p class="modal-note">Formato de duración: hh:mm:ss (ej. 01:30:00)</p>
     <div class="modal-actions">
       <button class="modal-btn" id="modal-cancel">Cancelar</button>
@@ -794,6 +795,13 @@ function setActiveUser(user) {
 function escapeHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function isoToDatetimeLocal(isoStr) {
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function initClientSelect() {
@@ -1355,6 +1363,41 @@ function addTimer() {
   saveInputs();
 }
 
+function resumeRecordFromLog(idx) {
+  const activeUser = getActiveUser();
+  if (!activeUser || activeUser === 'Equipo') return;
+  
+  const records = getRecords();
+  const r = records[idx];
+  if (!r) return;
+  
+  // Evitar duplicar temporizadores activos para el mismo registro
+  const existingTimer = activeTimers.find(t => String(t.resumedRecordId) === String(r.id));
+  if (existingTimer) {
+    alert("Este registro ya se está reanudando en un cronómetro activo.");
+    return;
+  }
+  
+  const resumedTimer = {
+    id: 'timer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+    resumedRecordId: r.id, // Referencia al ID único original
+    task: r.task,
+    client: r.client,
+    running: true,
+    startTime: Date.now() - r.duration,
+    elapsed: r.duration,
+    user: r.user || activeUser
+  };
+  
+  activeTimers.push(resumedTimer);
+  saveActiveTimers();
+  
+  handleUserChange();
+  startTickIfNeeded();
+  
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function toggleActiveTimer(id) {
   const t = activeTimers.find(timer => timer.id === id);
   if (!t) return;
@@ -1390,16 +1433,39 @@ function saveActiveTimerRecord(id) {
   if (elapsed < 1000) return;
   
   const records = getRecords();
-  const newRecord = {
-    id: generateUniqueId(),
-    task: t.task,
-    client: t.client,
-    duration: elapsed,
-    ts: new Date().toISOString(),
-    user: t.user || getActiveUser() || 'Invitado',
-    synced: false
-  };
-  records.push(newRecord);
+  
+  if (t.resumedRecordId) {
+    // Actualizar registro existente in-place sin duplicar
+    const existingIdx = records.findIndex(rec => String(rec.id) === String(t.resumedRecordId));
+    if (existingIdx !== -1) {
+      records[existingIdx].duration = elapsed;
+      records[existingIdx].ts = new Date().toISOString();
+      records[existingIdx].synced = false;
+    } else {
+      records.push({
+        id: t.resumedRecordId,
+        task: t.task,
+        client: t.client,
+        duration: elapsed,
+        ts: new Date().toISOString(),
+        user: t.user || getActiveUser() || 'Invitado',
+        synced: false
+      });
+    }
+  } else {
+    // Nuevo registro
+    const newRecord = {
+      id: generateUniqueId(),
+      task: t.task,
+      client: t.client,
+      duration: elapsed,
+      ts: new Date().toISOString(),
+      user: t.user || getActiveUser() || 'Invitado',
+      synced: false
+    };
+    records.push(newRecord);
+  }
+  
   setRecords(records);
   
   activeTimers = activeTimers.filter(timer => timer.id !== id);
@@ -1631,6 +1697,7 @@ function openEdit(idx) {
   editTask.value = r.task;
   editClient.value = r.client;
   editDur.value = fmt(r.duration);
+  document.getElementById('edit-date').value = isoToDatetimeLocal(r.ts);
   modalOv.classList.add('open');
 }
 function closeModal() { modalOv.classList.remove('open'); editIndex = null; }
@@ -1643,12 +1710,23 @@ document.getElementById('modal-save').addEventListener('click', () => {
   const dur = parseDuration(editDur.value);
   if (dur === null || dur <= 0) { editDur.style.borderColor = 'var(--danger)'; return; }
   editDur.style.borderColor = '';
+  
   const records = getRecords();
+  const dateInputVal = document.getElementById('edit-date').value;
+  let updatedTs = records[editIndex].ts;
+  if (dateInputVal) {
+    const parsedDate = new Date(dateInputVal);
+    if (!isNaN(parsedDate.getTime())) {
+      updatedTs = parsedDate.toISOString();
+    }
+  }
+  
   records[editIndex] = {
     ...records[editIndex],
     task: editTask.value.trim() || 'Sin descripción',
     client: editClient.value.trim() || 'Sin cliente',
     duration: dur,
+    ts: updatedTs,
     synced: false // Forzar resincronización del registro modificado
   };
   setRecords(records);
@@ -1829,6 +1907,9 @@ function renderLog() {
           </div>
           <div class="entry-duration">${fmt(r.duration)}</div>
           <div class="entry-actions">
+            <button class="icon-btn" onclick="resumeRecordFromLog(${r._i})" title="Reanudar cronómetro">
+              <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+            </button>
             <button class="icon-btn" onclick="openEdit(${r._i})" title="Editar">
               <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>

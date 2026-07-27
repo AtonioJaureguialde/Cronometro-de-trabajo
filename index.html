@@ -333,6 +333,7 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 .client-hours-section {
   border-top: 0.5px solid var(--border);
   padding: 20px 24px 10px;
+  transition: border-top 0.3s ease, padding-top 0.3s ease;
 }
 .client-hours-title {
   font-size: 11px;
@@ -383,6 +384,32 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 }
 .client-progress-bar.red {
   background-color: var(--danger);
+}
+
+/* Dynamic UI adaptation for 'Equipo' mode */
+.fields, .active-timers-container {
+  transition: opacity 0.35s ease, max-height 0.45s ease, padding 0.35s ease, margin 0.35s ease;
+  overflow: hidden;
+  max-height: 800px;
+  opacity: 1;
+}
+
+body.mode-equipo .fields,
+body.mode-equipo .active-timers-container {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  min-height: 0 !important;
+  pointer-events: none !important;
+  border: none !important;
+}
+
+body.mode-equipo .client-hours-section {
+  border-top: none;
+  padding-top: 14px;
 }
 
 /* log section styles */
@@ -813,6 +840,12 @@ function handleUserChange() {
   const clientSelect = document.getElementById('client-select');
   const clientInput = document.getElementById('client-input');
   
+  if (activeUser === 'Equipo') {
+    document.body.classList.add('mode-equipo');
+  } else {
+    document.body.classList.remove('mode-equipo');
+  }
+  
   if (!activeUser) {
     // Bloquear formulario
     addBtn.disabled = true;
@@ -825,7 +858,7 @@ function handleUserChange() {
     userWarningContainer.innerHTML = '<div class="user-warning-text">⚠️ Selecciona tu usuario para sincronizar y empezar a registrar</div>';
     userSelect.value = '';
   } else if (activeUser === 'Equipo') {
-    // Bloquear formulario para vista de Equipo
+    // Vista de Equipo: Modo Monitorización
     addBtn.disabled = true;
     addBtn.textContent = 'Selecciona un usuario individual';
     taskInput.disabled = true;
@@ -833,7 +866,7 @@ function handleUserChange() {
     clientInput.disabled = true;
     manageClientsBtn.disabled = false;
     
-    userWarningContainer.innerHTML = '<div class="user-warning-text" style="color:var(--muted)">⚠️ Vista de Equipo: No se pueden registrar tareas en esta vista</div>';
+    userWarningContainer.innerHTML = '<div class="user-warning-text" style="color:var(--muted)">⚠️ Vista de Equipo: Modo Monitorización de la Agencia</div>';
     userSelect.value = 'Equipo';
   } else {
     // Usuario individual activo

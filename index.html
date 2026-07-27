@@ -489,6 +489,62 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 }
 .modal-btn.primary { background: var(--surface2); color: var(--text); }
 .modal-btn:hover { background: var(--surface2); color: var(--text); }
+
+/* Manage clients modal specific styles */
+.client-manager-list {
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 14px;
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+  background: var(--bg);
+}
+.client-manager-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+.client-manager-item:last-child {
+  margin-bottom: 0;
+}
+.client-manager-info {
+  display: flex;
+  flex-direction: column;
+}
+.client-manager-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.client-manager-hours {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.client-manager-actions {
+  display: flex;
+  gap: 4px;
+}
+.client-form {
+  border-top: 0.5px solid var(--border);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.client-form-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
 </style>
 </head>
 <body>
@@ -524,10 +580,13 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   <div class="field-wrap">
     <input type="text" id="task-input" placeholder="Descripción de la tarea" autocomplete="off"/>
   </div>
-  <div class="field-wrap">
-    <select id="client-select">
+  <div class="field-wrap" style="display: flex; gap: 8px; align-items: center;">
+    <select id="client-select" style="flex: 1;">
       <option value="manual">-- Escribir cliente manualmente --</option>
     </select>
+    <button id="manage-clients-btn" class="icon-btn" title="Gestionar clientes" style="width: 48px; height: 48px; border: 0.5px solid var(--border); border-radius: 12px; background: var(--surface); flex-shrink: 0;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    </button>
   </div>
   <div class="field-wrap" id="client-manual-wrap">
     <input type="text" id="client-input" placeholder="Cliente" autocomplete="off"/>
@@ -576,6 +635,31 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   </div>
 </div>
 
+<!-- Manage Clients Modal -->
+<div class="modal-overlay" id="clients-modal-overlay">
+  <div class="modal" style="max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="modal-title">Gestión de Clientes de Mantenimiento</div>
+    
+    <div class="client-manager-list" id="client-manager-list">
+      <!-- Dynamic list of clients -->
+    </div>
+    
+    <form id="client-manager-form" class="client-form" onsubmit="return false;">
+      <div class="client-form-title" id="client-form-title">Añadir Nuevo Cliente</div>
+      <input type="text" id="client-form-name" placeholder="Nombre del cliente" autocomplete="off"/>
+      <input type="number" id="client-form-hours" placeholder="Horas contratadas (ej. 5)" min="0" step="0.5"/>
+      <div class="modal-actions" style="margin-top: 4px;">
+        <button class="modal-btn" id="client-form-cancel" style="display:none;">Cancelar edición</button>
+        <button class="modal-btn primary" id="client-form-submit">Añadir Cliente</button>
+      </div>
+    </form>
+    
+    <div class="modal-actions" style="margin-top: 14px;">
+      <button class="modal-btn" id="clients-modal-close">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -587,14 +671,15 @@ const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxLqmRXbQlbwT9
 const PLAY_PATH  = 'M8 5v14l11-7z';
 const PAUSE_PATH = 'M6 19h4V5H6v14zm8-14v14h4V5h-4z';
 
-const preconfiguredClients = [
-  { id: 1, nombre: "Cliente A", horasContratadas: 5 },
-  { id: 2, nombre: "Cliente B", horasContratadas: 2 }
+const defaultClients = [
+  { id: "1", nombre: "Cliente A", horasContratadas: 5, synced: true },
+  { id: "2", nombre: "Cliente B", horasContratadas: 2, synced: true }
 ];
 
 let activeTimers = [];
 let rafId = null;
 let editIndex = null;
+let editingClientId = null;
 
 const logToggle  = document.getElementById('log-toggle');
 const logBody    = document.getElementById('log-body');
@@ -612,10 +697,40 @@ const userSelect = document.getElementById('user-select');
 const userWarningContainer = document.getElementById('user-warning-container');
 const cloudBtn = document.getElementById('cloud-sync-indicator');
 
+// Manage Clients Elements
+const clientsModal = document.getElementById('clients-modal-overlay');
+const manageClientsBtn = document.getElementById('manage-clients-btn');
+const clientsModalClose = document.getElementById('clients-modal-close');
+const clientManagerList = document.getElementById('client-manager-list');
+const clientFormTitle = document.getElementById('client-form-title');
+const clientFormName = document.getElementById('client-form-name');
+const clientFormHours = document.getElementById('client-form-hours');
+const clientFormCancel = document.getElementById('client-form-cancel');
+const clientFormSubmit = document.getElementById('client-form-submit');
+
 // ── confirm delete variables ──────────────────────
 let activeDeleteIdx = null;
 let deleteTimeoutId = null;
 let activeDeleteCard = null;
+
+// ── client database helpers ───────────────────────
+function getClients() {
+  const stored = localStorage.getItem('timer_clients');
+  if (!stored) {
+    localStorage.setItem('timer_clients', JSON.stringify(defaultClients));
+    return defaultClients;
+  }
+  try {
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : defaultClients;
+  } catch(e) {
+    return defaultClients;
+  }
+}
+
+function setClients(clients) {
+  localStorage.setItem('timer_clients', JSON.stringify(clients));
+}
 
 // ── helpers ──────────────────────────────────────
 function generateUniqueId() {
@@ -650,13 +765,15 @@ function setActiveUser(user) {
 }
 
 function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 function initClientSelect() {
+  const clients = getClients();
   let html = '<option value="manual">-- Escribir cliente manualmente --</option>';
-  preconfiguredClients.forEach(c => {
-    html += `<option value="${c.id}">${c.nombre} (${c.horasContratadas}h contratadas)</option>`;
+  clients.forEach(c => {
+    html += `<option value="${c.id}">${escapeHtml(c.nombre)} (${c.horasContratadas}h contratadas)</option>`;
   });
   clientSelect.innerHTML = html;
 }
@@ -703,6 +820,7 @@ function handleUserChange() {
     taskInput.disabled = true;
     clientSelect.disabled = true;
     clientInput.disabled = true;
+    manageClientsBtn.disabled = true;
     
     userWarningContainer.innerHTML = '<div class="user-warning-text">⚠️ Selecciona tu usuario para sincronizar y empezar a registrar</div>';
     userSelect.value = '';
@@ -713,6 +831,7 @@ function handleUserChange() {
     taskInput.disabled = true;
     clientSelect.disabled = true;
     clientInput.disabled = true;
+    manageClientsBtn.disabled = false;
     
     userWarningContainer.innerHTML = '<div class="user-warning-text" style="color:var(--muted)">⚠️ Vista de Equipo: No se pueden registrar tareas en esta vista</div>';
     userSelect.value = 'Equipo';
@@ -722,6 +841,7 @@ function handleUserChange() {
     addBtn.textContent = 'Iniciar nuevo cronómetro';
     taskInput.disabled = false;
     clientSelect.disabled = false;
+    manageClientsBtn.disabled = false;
     
     if (clientSelect.value === 'manual') {
       clientInput.disabled = false;
@@ -740,7 +860,7 @@ function handleUserChange() {
   renderClientHours();
 }
 
-// ── Google Sheets Sync Engine ─────────────────────
+// ── Google Sheets Sync Engine (Tasks + Clients) ────
 async function syncWithCloud() {
   if (!GOOGLE_SHEET_URL) {
     if (cloudBtn) {
@@ -757,18 +877,33 @@ async function syncWithCloud() {
   }
   
   try {
-    // 1. Procesar eliminaciones pendientes
-    const deletedIds = JSON.parse(localStorage.getItem('deleted_record_ids') || '[]');
-    const remainingDeletions = [];
-    
-    for (const id of deletedIds) {
+    // 1. Procesar eliminaciones pendientes de Clientes
+    const deletedClientIds = JSON.parse(localStorage.getItem('deleted_client_ids') || '[]');
+    const remainingClientDeletions = [];
+    for (const id of deletedClientIds) {
       try {
-        // mode: 'no-cors' soluciona el error de red de las redirecciones de Google Apps Script
         await fetch(GOOGLE_SHEET_URL, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ action: 'delete', id: id })
+          body: JSON.stringify({ action: 'delete', target: 'clients', id: id })
+        });
+      } catch (err) {
+        remainingClientDeletions.push(id);
+      }
+    }
+    localStorage.setItem('deleted_client_ids', JSON.stringify(remainingClientDeletions));
+    
+    // 2. Procesar eliminaciones pendientes de Tareas
+    const deletedIds = JSON.parse(localStorage.getItem('deleted_record_ids') || '[]');
+    const remainingDeletions = [];
+    for (const id of deletedIds) {
+      try {
+        await fetch(GOOGLE_SHEET_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'delete', target: 'tasks', id: id })
         });
       } catch (err) {
         remainingDeletions.push(id);
@@ -776,18 +911,41 @@ async function syncWithCloud() {
     }
     localStorage.setItem('deleted_record_ids', JSON.stringify(remainingDeletions));
     
-    // 2. Subir registros locales no sincronizados
-    const records = getRecords();
-    for (const r of records) {
-      if (!r.synced) {
+    // 3. Subir clientes no sincronizados
+    const clients = getClients();
+    for (const c of clients) {
+      if (!c.synced) {
         try {
-          // mode: 'no-cors' para evitar errores CORS en la redirección de Google
           await fetch(GOOGLE_SHEET_URL, {
             method: 'POST',
             mode: 'no-cors',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
               action: 'create',
+              target: 'clients',
+              id: c.id,
+              nombre: c.nombre,
+              horas_contratadas: c.horasContratadas
+            })
+          });
+          c.synced = true;
+        } catch (err) {}
+      }
+    }
+    setClients(clients);
+    
+    // 4. Subir tareas no sincronizadas
+    const records = getRecords();
+    for (const r of records) {
+      if (!r.synced) {
+        try {
+          await fetch(GOOGLE_SHEET_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({
+              action: 'create',
+              target: 'tasks',
               id: r.id,
               usuario: r.user || 'Invitado',
               cliente: r.client || 'Sin cliente',
@@ -798,20 +956,51 @@ async function syncWithCloud() {
             })
           });
           r.synced = true;
-        } catch (err) {
-          // Mantener synced = false para reintentar luego
-        }
+        } catch (err) {}
       }
     }
     setRecords(records);
     
-    // 3. Descargar todo el historial de la nube
+    // 5. Descargar todo el historial de la nube (Tareas + Clientes)
     const res = await fetch(GOOGLE_SHEET_URL);
-    const cloudRecords = await res.json();
+    const cloudData = await res.json();
     
-    if (Array.isArray(cloudRecords)) {
-      // Convertir formato de Sheets al formato local de la app
-      const formattedCloud = cloudRecords.map(c => {
+    let cloudRecords = [];
+    let cloudClients = [];
+    
+    if (Array.isArray(cloudData)) {
+      cloudRecords = cloudData;
+    } else if (cloudData && typeof cloudData === 'object') {
+      cloudRecords = Array.isArray(cloudData.records) ? cloudData.records : [];
+      cloudClients = Array.isArray(cloudData.clients) ? cloudData.clients : [];
+    }
+    
+    // Fusionar Clientes
+    if (cloudClients.length > 0) {
+      const formattedCloudClients = cloudClients.map(c => ({
+        id: String(c.id),
+        nombre: c.nombre || 'Cliente sin nombre',
+        horasContratadas: Number(c.horas_contratadas || 0),
+        synced: true
+      }));
+      
+      const activeDeletedClientIds = JSON.parse(localStorage.getItem('deleted_client_ids') || '[]');
+      const filteredCloudClients = formattedCloudClients.filter(c => !activeDeletedClientIds.includes(c.id));
+      const localUnsyncedClients = clients.filter(c => !c.synced);
+      
+      const combinedClients = [...localUnsyncedClients];
+      filteredCloudClients.forEach(cloudC => {
+        if (!combinedClients.some(c => String(c.id) === String(cloudC.id))) {
+          combinedClients.push(cloudC);
+        }
+      });
+      setClients(combinedClients);
+      initClientSelect();
+    }
+    
+    // Fusionar Tareas
+    if (cloudRecords.length >= 0) {
+      const formattedCloudRecords = cloudRecords.map(c => {
         let tsIso = new Date().toISOString();
         if (c.fecha_registro) {
           const dateStr = String(c.fecha_registro).replace(' ', 'T');
@@ -821,7 +1010,7 @@ async function syncWithCloud() {
           }
         }
         return {
-          id: c.id,
+          id: String(c.id),
           user: c.usuario || 'Invitado',
           client: c.cliente || 'Sin cliente',
           task: c.descripcion || 'Sin descripción',
@@ -831,36 +1020,28 @@ async function syncWithCloud() {
         };
       });
       
-      // Filtrar borrados que aún no se hayan propagado a la nube
       const activeDeletedIds = JSON.parse(localStorage.getItem('deleted_record_ids') || '[]');
-      const filteredCloud = formattedCloud.filter(c => !activeDeletedIds.includes(c.id));
-      
-      // Mantener los locales no sincronizados
+      const filteredCloud = formattedCloudRecords.filter(c => !activeDeletedIds.includes(c.id));
       const localUnsynced = records.filter(r => !r.synced);
       
-      // Combinar datos locales y remotos sin duplicar IDs
       const combined = [...localUnsynced];
       filteredCloud.forEach(cloudRec => {
-        if (!combined.some(r => r.id === cloudRec.id)) {
+        if (!combined.some(r => String(r.id) === String(cloudRec.id))) {
           combined.push(cloudRec);
         }
       });
       
       combined.sort((a, b) => new Date(a.ts) - new Date(b.ts));
       setRecords(combined);
-      
-      // Archivar en local los meses pasados
       archiveOldRecords();
-      
-      if (cloudBtn) {
-        cloudBtn.classList.remove('syncing', 'error');
-        cloudBtn.classList.add('success');
-        cloudBtn.title = "Sincronizado con Google Sheets";
-      }
-      return { success: true, message: 'Sincronización completada con éxito.' };
     }
     
-    throw new Error("Respuesta inválida del servidor");
+    if (cloudBtn) {
+      cloudBtn.classList.remove('syncing', 'error');
+      cloudBtn.classList.add('success');
+      cloudBtn.title = "Sincronizado con Google Sheets";
+    }
+    return { success: true, message: 'Sincronización completada con éxito.' };
     
   } catch (err) {
     console.error("Sync error:", err);
@@ -963,6 +1144,7 @@ function renderClientHours() {
   const activeUser = getActiveUser();
   const filtered = records.filter(r => activeUser === 'Equipo' || r.user === activeUser);
   const clientHoursList = document.getElementById('client-hours-list');
+  const clients = getClients();
   
   const clientData = {};
   filtered.forEach(r => {
@@ -982,16 +1164,19 @@ function renderClientHours() {
   let html = '';
   clientNames.forEach(name => {
     const workedMs = clientData[name];
-    const preClient = preconfiguredClients.find(c => c.nombre.toLowerCase() === name.toLowerCase());
+    const preClient = clients.find(c => c.nombre.toLowerCase() === name.toLowerCase());
     
     if (preClient) {
-      const limitHours = preClient.horasContratadas;
+      const limitHours = Number(preClient.horasContratadas || 0);
       const limitMs = limitHours * 3600 * 1000;
       
       let greenWidth = 0;
       let redWidth = 0;
       
-      if (workedMs <= limitMs) {
+      if (limitMs <= 0) {
+        greenWidth = 0;
+        redWidth = 100;
+      } else if (workedMs <= limitMs) {
         greenWidth = (workedMs / limitMs) * 100;
         redWidth = 0;
       } else {
@@ -1105,13 +1290,14 @@ function addTimer() {
   
   const taskInput = document.getElementById('task-input');
   const task = taskInput.value.trim() || 'Sin descripción';
+  const clients = getClients();
   
   let client = 'Sin cliente';
   if (clientSelect.value === 'manual') {
     client = document.getElementById('client-input').value.trim() || 'Sin cliente';
   } else {
-    const selectedId = parseInt(clientSelect.value);
-    const preClient = preconfiguredClients.find(c => c.id === selectedId);
+    const selectedId = clientSelect.value;
+    const preClient = clients.find(c => String(c.id) === String(selectedId));
     client = preClient ? preClient.nombre : 'Sin cliente';
   }
   
@@ -1441,6 +1627,138 @@ document.getElementById('modal-save').addEventListener('click', () => {
   // Sincronizar en segundo plano
   syncWithCloud().catch(() => {});
 });
+
+// ── Manage Clients Modal Logic ────────────────────
+function openClientsModal() {
+  resetClientForm();
+  renderClientManagerList();
+  clientsModal.classList.add('open');
+}
+
+function closeClientsModal() {
+  clientsModal.classList.remove('open');
+}
+
+function resetClientForm() {
+  editingClientId = null;
+  clientFormTitle.textContent = "Añadir Nuevo Cliente";
+  clientFormName.value = "";
+  clientFormHours.value = "";
+  clientFormSubmit.textContent = "Añadir Cliente";
+  clientFormCancel.style.display = "none";
+}
+
+function renderClientManagerList() {
+  const clients = getClients();
+  if (clients.length === 0) {
+    clientManagerList.innerHTML = '<p class="empty-state" style="padding:12px;">No hay clientes configurados</p>';
+    return;
+  }
+  
+  let html = '';
+  clients.forEach(c => {
+    html += `
+      <div class="client-manager-item">
+        <div class="client-manager-info">
+          <span class="client-manager-name">${escapeHtml(c.nombre)}</span>
+          <span class="client-manager-hours">${c.horasContratadas}h contratadas</span>
+        </div>
+        <div class="client-manager-actions">
+          <button class="icon-btn" onclick="editClientItem('${c.id}')" title="Editar">
+            <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="icon-btn danger" onclick="deleteClientItem('${c.id}')" title="Eliminar">
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </div>
+    `;
+  });
+  clientManagerList.innerHTML = html;
+}
+
+function editClientItem(id) {
+  const clients = getClients();
+  const client = clients.find(c => String(c.id) === String(id));
+  if (!client) return;
+  
+  editingClientId = id;
+  clientFormTitle.textContent = "Editar Cliente";
+  clientFormName.value = client.nombre;
+  clientFormHours.value = client.horasContratadas;
+  clientFormSubmit.textContent = "Guardar Cambios";
+  clientFormCancel.style.display = "block";
+}
+
+function deleteClientItem(id) {
+  if (!confirm("¿Seguro que deseas eliminar este cliente de mantenimiento?")) return;
+  const clients = getClients();
+  const newClients = clients.filter(c => String(c.id) !== String(id));
+  setClients(newClients);
+  
+  const deletedClientIds = JSON.parse(localStorage.getItem('deleted_client_ids') || '[]');
+  if (!deletedClientIds.includes(id)) {
+    deletedClientIds.push(id);
+    localStorage.setItem('deleted_client_ids', JSON.stringify(deletedClientIds));
+  }
+  
+  resetClientForm();
+  renderClientManagerList();
+  initClientSelect();
+  renderClientHours();
+  
+  syncWithCloud().catch(() => {});
+}
+
+clientFormSubmit.addEventListener('click', () => {
+  const name = clientFormName.value.trim();
+  const hours = parseFloat(clientFormHours.value);
+  
+  if (!name) {
+    clientFormName.style.borderColor = 'var(--danger)';
+    return;
+  }
+  clientFormName.style.borderColor = '';
+  
+  if (isNaN(hours) || hours < 0) {
+    clientFormHours.style.borderColor = 'var(--danger)';
+    return;
+  }
+  clientFormHours.style.borderColor = '';
+  
+  const clients = getClients();
+  
+  if (editingClientId) {
+    const idx = clients.findIndex(c => String(c.id) === String(editingClientId));
+    if (idx !== -1) {
+      clients[idx] = {
+        ...clients[idx],
+        nombre: name,
+        horasContratadas: hours,
+        synced: false
+      };
+    }
+  } else {
+    clients.push({
+      id: generateUniqueId(),
+      nombre: name,
+      horasContratadas: hours,
+      synced: false
+    });
+  }
+  
+  setClients(clients);
+  resetClientForm();
+  renderClientManagerList();
+  initClientSelect();
+  renderClientHours();
+  
+  syncWithCloud().catch(() => {});
+});
+
+clientFormCancel.addEventListener('click', resetClientForm);
+manageClientsBtn.addEventListener('click', openClientsModal);
+clientsModalClose.addEventListener('click', closeClientsModal);
 
 // ── render log ────────────────────────────────────
 function renderLog() {

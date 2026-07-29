@@ -185,36 +185,49 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   cursor: not-allowed;
 }
 
-/* active timers container */
-.active-timers-container {
+/* active timers wrapper & dedicated list */
+.active-timers-wrapper {
   flex-shrink: 0;
-  max-height: 310px;
-  padding: 14px 24px;
+  padding: 0 24px;
+  margin-top: 14px;
+  margin-bottom: 14px;
+  position: relative;
+  z-index: 2;
+}
+
+.active-timers-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow-y: auto;
   position: relative;
-  z-index: 1;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
-/* Custom dark scrollbar for active-timers-container and modal lists */
-.active-timers-container::-webkit-scrollbar,
+/* Scrollable state dynamically added in JS when active timers > 2 */
+.active-timers-list.has-scroll {
+  max-height: 275px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Custom dark scrollbar for active-timers-list and modal lists */
+.active-timers-list::-webkit-scrollbar,
 .client-manager-list::-webkit-scrollbar {
   width: 6px;
 }
-.active-timers-container::-webkit-scrollbar-track,
+.active-timers-list::-webkit-scrollbar-track,
 .client-manager-list::-webkit-scrollbar-track {
   background: var(--bg);
   border-radius: 3px;
 }
-.active-timers-container::-webkit-scrollbar-thumb,
+.active-timers-list::-webkit-scrollbar-thumb,
 .client-manager-list::-webkit-scrollbar-thumb {
   background: var(--surface2);
   border-radius: 3px;
   border: 1px solid var(--border);
 }
-.active-timers-container::-webkit-scrollbar-thumb:hover,
+.active-timers-list::-webkit-scrollbar-thumb:hover,
 .client-manager-list::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
@@ -363,6 +376,8 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 
 /* client progress section */
 .client-hours-section {
+  position: relative;
+  z-index: 1;
   border-top: 0.5px solid var(--border);
   padding: 16px 24px 10px;
   transition: border-top 0.3s ease, padding-top 0.3s ease;
@@ -440,14 +455,14 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 }
 
 /* Dynamic UI adaptation for 'Equipo' mode */
-.fields, .active-timers-container {
+.fields, .active-timers-wrapper {
   transition: opacity 0.35s ease, max-height 0.45s ease, padding 0.35s ease, margin 0.35s ease;
   overflow: hidden;
   opacity: 1;
 }
 
 body.mode-equipo .fields,
-body.mode-equipo .active-timers-container {
+body.mode-equipo .active-timers-wrapper {
   max-height: 0 !important;
   opacity: 0 !important;
   padding-top: 0 !important;
@@ -673,8 +688,10 @@ body.mode-equipo .client-hours-section {
   <button class="add-timer-btn" id="add-timer-btn">Iniciar nuevo cronómetro</button>
 </div>
 
-<div class="active-timers-container" id="active-timers-container">
-  <!-- Las tarjetas de cronómetros activos se renderizan dinámicamente aquí -->
+<div class="active-timers-wrapper" id="active-timers-wrapper">
+  <div class="active-timers-list" id="active-timers-list">
+    <!-- Las tarjetas de cronómetros activos se renderizan dinámicamente aquí -->
+  </div>
 </div>
 
 <div class="client-hours-section">
@@ -1561,19 +1578,26 @@ function saveActiveTimerRecord(id) {
 }
 
 function renderActiveTimers() {
-  const container = document.getElementById('active-timers-container');
+  const listContainer = document.getElementById('active-timers-list');
   const activeUser = getActiveUser();
   
   const filteredActive = activeTimers.filter(t => activeUser === 'Equipo' || t.user === activeUser);
   
   if (filteredActive.length === 0) {
-    container.innerHTML = `
+    listContainer.classList.remove('has-scroll');
+    listContainer.innerHTML = `
       <div class="empty-timers" id="empty-timers">
         <p>No hay cronómetros activos</p>
         <small>${activeUser === 'Equipo' ? 'Ningún usuario tiene cronómetros activos' : 'Ingresa una tarea y cliente arriba para empezar'}</small>
       </div>
     `;
     return;
+  }
+  
+  if (filteredActive.length > 2) {
+    listContainer.classList.add('has-scroll');
+  } else {
+    listContainer.classList.remove('has-scroll');
   }
   
   let html = '';
@@ -1616,7 +1640,7 @@ function renderActiveTimers() {
       </div>
     `;
   });
-  container.innerHTML = html;
+  listContainer.innerHTML = html;
 }
 
 // ── particle explosion ──────────────────────────

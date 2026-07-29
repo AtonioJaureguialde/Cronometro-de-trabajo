@@ -125,7 +125,15 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 .header-title { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
 .header-kpi { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0.02em; }
 
-.fields { padding: 20px 24px 0; display: flex; flex-direction: column; gap: 10px; }
+.fields {
+  flex-shrink: 0;
+  padding: 20px 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  z-index: 5;
+}
 .field-wrap input, .field-wrap select {
   width: 100%; padding: 14px 16px;
   background: var(--surface); border: 0.5px solid var(--border);
@@ -179,14 +187,15 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 
 /* active timers container */
 .active-timers-container {
-  flex: none;
-  max-height: 290px;
-  padding: 20px 24px;
+  flex-shrink: 0;
+  max-height: 310px;
+  padding: 14px 24px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   overflow-y: auto;
-  min-height: 200px;
+  position: relative;
+  z-index: 1;
 }
 
 /* Custom dark scrollbar for active-timers-container and modal lists */
@@ -212,12 +221,12 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 
 .empty-timers {
   text-align: center;
-  padding: 48px 24px;
+  padding: 36px 24px;
   color: var(--hint);
   font-size: 14px;
   border: 1px dashed var(--border);
   border-radius: 16px;
-  margin: 10px 0;
+  margin: 4px 0;
 }
 .empty-timers small {
   display: block;
@@ -236,6 +245,7 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   flex-direction: column;
   gap: 14px;
   transition: border-color 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
 }
 .timer-card:hover {
   border-color: var(--border2);
@@ -433,7 +443,6 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 .fields, .active-timers-container {
   transition: opacity 0.35s ease, max-height 0.45s ease, padding 0.35s ease, margin 0.35s ease;
   overflow: hidden;
-  max-height: 800px;
   opacity: 1;
 }
 

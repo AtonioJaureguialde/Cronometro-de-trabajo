@@ -179,13 +179,35 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 
 /* active timers container */
 .active-timers-container {
-  flex: 1;
+  flex: none;
+  max-height: 290px;
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: 14px;
   overflow-y: auto;
   min-height: 200px;
+}
+
+/* Custom dark scrollbar for active-timers-container and modal lists */
+.active-timers-container::-webkit-scrollbar,
+.client-manager-list::-webkit-scrollbar {
+  width: 6px;
+}
+.active-timers-container::-webkit-scrollbar-track,
+.client-manager-list::-webkit-scrollbar-track {
+  background: var(--bg);
+  border-radius: 3px;
+}
+.active-timers-container::-webkit-scrollbar-thumb,
+.client-manager-list::-webkit-scrollbar-thumb {
+  background: var(--surface2);
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.active-timers-container::-webkit-scrollbar-thumb:hover,
+.client-manager-list::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 .empty-timers {
@@ -332,8 +354,30 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
 /* client progress section */
 .client-hours-section {
   border-top: 0.5px solid var(--border);
-  padding: 20px 24px 10px;
+  padding: 16px 24px 10px;
   transition: border-top 0.3s ease, padding-top 0.3s ease;
+}
+.client-hours-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 10px 0;
+  cursor: pointer;
+  user-select: none;
+}
+.client-hours-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.client-hours-toggle.open .chevron {
+  transform: rotate(180deg);
+}
+.client-hours-body {
+  display: none;
+}
+.client-hours-body.open {
+  display: block;
 }
 .client-hours-title {
   font-size: 11px;
@@ -341,7 +385,6 @@ body { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; 
   color: var(--muted);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin-bottom: 12px;
 }
 .client-progress-card {
   background: var(--surface);
@@ -626,9 +669,18 @@ body.mode-equipo .client-hours-section {
 </div>
 
 <div class="client-hours-section">
-  <div class="client-hours-title">Horas por clientes de este mes</div>
-  <div id="client-hours-list">
-    <!-- Renderizado dinámico de tarjetas de progreso por cliente -->
+  <div class="client-hours-toggle open" id="client-hours-toggle" role="button" tabindex="0" aria-expanded="true">
+    <div class="client-hours-toggle-left">
+      <span class="client-hours-title">Horas por clientes de este mes</span>
+    </div>
+    <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </div>
+  <div class="client-hours-body open" id="client-hours-body">
+    <div id="client-hours-list">
+      <!-- Renderizado dinámico de tarjetas de progreso por cliente -->
+    </div>
   </div>
 </div>
 
@@ -717,6 +769,9 @@ const modalOv    = document.getElementById('modal-overlay');
 const editTask   = document.getElementById('edit-task');
 const editClient = document.getElementById('edit-client');
 const editDur    = document.getElementById('edit-duration');
+
+const clientHoursToggle = document.getElementById('client-hours-toggle');
+const clientHoursBody   = document.getElementById('client-hours-body');
 
 const clientSelect = document.getElementById('client-select');
 const clientManualWrap = document.getElementById('client-manual-wrap');
@@ -1269,6 +1324,7 @@ function restoreSession() {
     if (!Array.isArray(activeTimers)) activeTimers = [];
     
     initClientSelect();
+    initClientHoursToggle();
     
     const inputs = JSON.parse(localStorage.getItem('timer_inputs') || 'null');
     if (inputs) {
@@ -1283,6 +1339,14 @@ function restoreSession() {
   } catch(e) {
     activeTimers = [];
   }
+}
+
+function initClientHoursToggle() {
+  const savedState = localStorage.getItem('client_hours_open');
+  const isOpen = savedState === null ? true : savedState === 'true';
+  clientHoursBody.classList.toggle('open', isOpen);
+  clientHoursToggle.classList.toggle('open', isOpen);
+  clientHoursToggle.setAttribute('aria-expanded', isOpen);
 }
 
 // ── timer controls ────────────────────────────────
@@ -1970,6 +2034,15 @@ document.addEventListener('click', (e) => {
     }
   }
 });
+
+// ── client hours toggle ───────────────────────────
+clientHoursToggle.addEventListener('click', () => {
+  const open = clientHoursBody.classList.toggle('open');
+  clientHoursToggle.classList.toggle('open', open);
+  clientHoursToggle.setAttribute('aria-expanded', open);
+  localStorage.setItem('client_hours_open', open);
+});
+clientHoursToggle.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') clientHoursToggle.click(); });
 
 // ── log toggle ────────────────────────────────────
 logToggle.addEventListener('click', () => {
